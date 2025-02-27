@@ -6,7 +6,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Users, Calendar,
   Package2, LogOut, Menu, ChevronLeft, ChevronRight,
-  Settings, FileJson, User, House
+  Settings, FileJson, User, House, Radio
 } from "lucide-react";
 import { PiMosqueLight } from "react-icons/pi";
 import { useState, useEffect } from "react";
@@ -61,6 +61,7 @@ export function Sidebar() {
     { icon: Calendar, label: "Planning", href: "/planning" },
     { icon: Users, label: "Vrijwilligers", href: "/volunteers" },
     { icon: House, label: "Ruimtes", href: "/rooms", adminOnly: true },
+    { icon: Radio, label: "Communicatie", href: "/communication" }, 
     { icon: Package2, label: "Materialen", href: "/materials" },
     {
       icon: FileJson,

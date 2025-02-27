@@ -2,7 +2,7 @@
   "name": "MEFEN Vrijwilligers",
   "short_name": "MEFEN",
   "description": "Vrijwilligers management systeem voor MEFEN moskee",
-  "version": "2.1.8",
+  "version": "2.1.9",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

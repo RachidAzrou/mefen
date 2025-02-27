@@ -3,6 +3,7 @@ import { format, startOfWeek, addDays, isWithinInterval } from "date-fns";
 import { nl } from "date-fns/locale";
 import { db } from "@/lib/firebase";
 import { ref, onValue } from "firebase/database";
+import { GiWalkieTalkie } from "react-icons/gi";
 
 type Planning = {
   id: string;
@@ -15,6 +16,7 @@ type Planning = {
 type Room = {
   id: string;
   name: string;
+  channel?: string; // Added channel property
 };
 
 type Volunteer = {
@@ -72,7 +74,6 @@ export default function PublicCalendar() {
     });
   };
 
-  // Group plannings by room for a specific day
   const getPlanningsByRoom = (day: Date) => {
     const dayPlannings = getPlanningsForDay(day);
     const planningsByRoom = new Map<string, Planning[]>();
@@ -128,8 +129,14 @@ export default function PublicCalendar() {
 
                     return (
                       <div key={room.id} className="space-y-2">
-                        <div className="font-medium text-sm text-primary/80 border-b pb-1">
-                          {room.name}
+                        <div className="font-medium text-sm text-primary/80 border-b pb-1 flex items-center justify-between">
+                          <span>{room.name}</span>
+                          {room.channel && (
+                            <div className="flex items-center gap-1 text-[10px] text-[#963E56]/70">
+                              <GiWalkieTalkie className="h-3 w-3" />
+                              <span>{room.channel}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="space-y-2 pl-2">
                           {roomPlannings.map(planning => {
@@ -195,8 +202,14 @@ export default function PublicCalendar() {
 
                     return (
                       <div key={room.id} className="space-y-2">
-                        <div className="font-medium text-sm text-primary/80 border-b pb-1">
-                          {room.name}
+                        <div className="font-medium text-sm text-primary/80 border-b pb-1 flex items-center justify-between">
+                          <span>{room.name}</span>
+                          {room.channel && (
+                            <div className="flex items-center gap-1 text-[10px] text-[#963E56]/70">
+                              <GiWalkieTalkie className="h-3 w-3" />
+                              <span>{room.channel}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="space-y-2 pl-2">
                           {roomPlannings.map(planning => {
@@ -211,9 +224,6 @@ export default function PublicCalendar() {
                                     ? `${volunteer.firstName} ${volunteer.lastName}`
                                     : 'Niet toegewezen'
                                   }
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {format(new Date(planning.startDate), "HH:mm")} - {format(new Date(planning.endDate), "HH:mm")}
                                 </div>
                               </div>
                             );
