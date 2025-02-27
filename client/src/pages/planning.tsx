@@ -537,37 +537,36 @@ const Planning = () => {
           </Card>
         </div>
 
-        {isAdmin && (
-          <div className="mt-6 flex justify-end">
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2 bg-[#963E56] hover:bg-[#963E56]/90">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Inplannen</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-[95vw] sm:max-w-[450px] p-4 sm:p-6 bg-white border-none shadow-lg mx-4">
-                <DialogHeader className="mb-4 space-y-2">
-                  <DialogTitle className="text-xl font-semibold text-[#963E56]">
-                    {editingPlanning ? "Planning Bewerken" : "Planning"}
-                  </DialogTitle>
-                </DialogHeader>
-                <PlanningForm
-                  volunteers={volunteers}
-                  rooms={rooms}
-                  onSubmit={onSubmit}
-                  onClose={() => {
-                    setDialogOpen(false);
-                    setEditingPlanning(null);
-                    form.reset();
-                  }}
-                  form={form}
-                  editingPlanning={editingPlanning}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
-        )}
+        <div className="mt-6 flex justify-end">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 bg-[#963E56] hover:bg-[#963E56]/90">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Inplannen</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[95vw] sm:max-w-[450px] p-4 sm:p-6 bg-white border-none shadow-lg mx-4">
+              <DialogHeader className="mb-4 space-y-2">
+                <DialogTitle className="text-xl font-semibold text-[#963E56]">
+                  {editingPlanning ? "Planning Bewerken" : "Planning"}
+                </DialogTitle>
+              </DialogHeader>
+              <PlanningForm
+                volunteers={volunteers}
+                rooms={rooms}
+                onSubmit={onSubmit}
+                onClose={() => {
+                  setDialogOpen(false);
+                  setEditingPlanning(null);
+                  form.reset();
+                }}
+                form={form}
+                editingPlanning={editingPlanning}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+
       </CollapsibleSection>
 
       <div className="space-y-6 bg-background rounded-lg border p-6">

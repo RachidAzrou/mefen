@@ -616,16 +616,14 @@ const MaterialsPage = () => {
                       <FormItem>
                         <FormLabel>Vrijwilliger</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
                           value={field.value}
+                          onValueChange={field.onChange}
                         >
-                          <FormControl>
-                            <SelectTrigger className="w-full bg-white border border-input hover:bg-accent hover:text-accent-foreground">
-                              <SelectValue placeholder="Selecteer vrijwilliger" />
-                            </SelectTrigger>
-                          </FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecteer vrijwilliger" />
+                          </SelectTrigger>
                           <SelectContent>
-                            <div className="sticky top-0 px-2 py-2 bg-background border-b">
+                            <div className="sticky top-0 px-2 py-2 bg-white border-b">
                               <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 <input
@@ -634,7 +632,7 @@ const MaterialsPage = () => {
                                   value={searchTerm}
                                   onChange={(e) => setSearchTerm(e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="w-full pl-9 h-9 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="w-full pl-9 h-9 rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
                                 />
                               </div>
                             </div>
@@ -644,19 +642,49 @@ const MaterialsPage = () => {
                                   const fullName = `${volunteer.firstName} ${volunteer.lastName}`.toLowerCase();
                                   return fullName.includes(searchTerm.toLowerCase());
                                 })
-                                .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`))
                                 .map((volunteer) => (
                                   <SelectItem
                                     key={volunteer.id}
                                     value={volunteer.id}
-                                    className="cursor-pointer py-2.5 px-3 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                                    className="flex items-center justify-between py-2.5 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                                   >
-                                    {volunteer.firstName} {volunteer.lastName}
+                                    <div className="flex items-center gap-2">
+                                      <Check
+                                        className={cn(
+                                          "h-4 w-4 flex-shrink-0",
+                                          field.value === volunteer.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <span className="flex-grow">{volunteer.firstName} {volunteer.lastName}</span>
+                                    </div>
                                   </SelectItem>
                                 ))}
                             </div>
                           </SelectContent>
                         </Select>
+                        {field.value && (
+                          <div className="mt-2">
+                            {(() => {
+                              const volunteer = volunteers.find(v => v.id === field.value);
+                              if (volunteer) {
+                                return (
+                                  <div className="bg-[#963E56]/10 text-[#963E56] text-sm rounded-full px-3 py-1 flex items-center gap-2 w-fit">
+                                    <span>{volunteer.firstName} {volunteer.lastName}</span>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-4 w-4 p-0 hover:bg-transparent"
+                                      onClick={() => field.onChange(undefined)}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                );
+                              }
+                            })()}
+                          </div>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}

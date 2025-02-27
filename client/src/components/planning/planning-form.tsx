@@ -114,14 +114,45 @@ export function PlanningForm({
                             <SelectItem
                               key={volunteer.id}
                               value={volunteer.id}
-                              className="cursor-pointer py-2.5 px-3 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                              className="flex items-center justify-between py-2.5 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                             >
-                              {volunteer.firstName} {volunteer.lastName}
+                              <div className="flex items-center gap-2">
+                                <Check
+                                  className={cn(
+                                    "h-4 w-4 flex-shrink-0",
+                                    field.value === volunteer.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <span className="flex-grow">{volunteer.firstName} {volunteer.lastName}</span>
+                              </div>
                             </SelectItem>
                           ))}
                       </div>
                     </SelectContent>
                   </Select>
+                  {field.value && (
+                    <div className="mt-2">
+                      {(() => {
+                        const volunteer = volunteers.find(v => v.id === field.value);
+                        if (volunteer) {
+                          return (
+                            <div className="bg-[#963E56]/10 text-[#963E56] text-sm rounded-full px-3 py-1 flex items-center gap-2 w-fit">
+                              <span>{volunteer.firstName} {volunteer.lastName}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 p-0 hover:bg-transparent"
+                                onClick={() => field.onChange(undefined)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -210,14 +241,14 @@ export function PlanningForm({
                               value={volunteer.id}
                               className="cursor-pointer py-2.5 px-3 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                             >
-                              <div className="flex items-center">
+                              <div className="flex items-center gap-2">
                                 <Check
                                   className={cn(
-                                    "mr-2 h-4 w-4",
+                                    "h-4 w-4 flex-shrink-0",
                                     field.value?.includes(volunteer.id) ? "opacity-100" : "opacity-0"
                                   )}
                                 />
-                                {volunteer.firstName} {volunteer.lastName}
+                                <span>{volunteer.firstName} {volunteer.lastName}</span>
                               </div>
                             </SelectItem>
                           ))}
