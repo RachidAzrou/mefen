@@ -256,19 +256,19 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
                     if (!roomPlannings) return null;
 
                     return (
-                      <div key={room.id} className="space-y-2">
-                        <div className="font-medium text-sm text-[#963E56]/80 border-b pb-1">
+                      <div key={room.id} className="space-y-1">
+                        <div className="font-medium text-xs text-[#963E56]/80 border-b pb-0.5">
                           {room.name}
                         </div>
-                        <div className="space-y-2 pl-2">
+                        <div className="space-y-1 pl-1">
                           {roomPlannings.map(planning => {
                             const volunteer = volunteers.find(v => v.id === planning.volunteerId);
                             return (
                               <div
                                 key={planning.id}
-                                className="text-sm p-2 rounded bg-[#963E56]/5 border border-[#963E56]/10"
+                                className="text-[11px] leading-tight p-1.5 rounded bg-[#963E56]/5 border border-[#963E56]/10"
                               >
-                                <div className="font-medium">
+                                <div className="font-medium text-[#963E56]/90 overflow-hidden">
                                   {volunteer
                                     ? `${volunteer.firstName} ${volunteer.lastName}`
                                     : 'Niet toegewezen'
