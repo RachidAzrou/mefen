@@ -44,9 +44,13 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
   const [plannings, setPlannings] = useState<Planning[]>([]);
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [showFullWeek, setShowFullWeek] = useState(false);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
+
+  // Mobile view: Only show today + next 2 days by default
+  const displayDays = showFullWeek ? weekDays : weekDays.slice(0, 3);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -156,20 +160,20 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header sectie */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">
-        <h2 className="text-lg sm:text-xl font-semibold text-[#D9A347]">
+    <div className="space-y-4 md:space-y-6">
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border">
+        <h2 className="text-base sm:text-xl font-semibold text-[#D9A347]">
           Week van {format(weekStart, "d MMMM yyyy", { locale: nl })}
         </h2>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={goToPreviousWeek}
-              className="h-9 w-9"
+              className="h-8 w-8 sm:h-9 sm:w-9"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -177,7 +181,7 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
               variant="outline"
               size="sm"
               onClick={goToToday}
-              className="h-9 px-4 mx-2"
+              className="h-8 sm:h-9 px-2 sm:px-4"
             >
               Vandaag
             </Button>
@@ -185,7 +189,7 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
               variant="outline"
               size="sm"
               onClick={goToNextWeek}
-              className="h-9 w-9"
+              className="h-8 w-8 sm:h-9 sm:w-9"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -193,9 +197,9 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
+              <Button variant="outline" size="sm" className="h-8 sm:h-9">
                 <Share2 className="h-4 w-4 mr-2" />
-                Delen
+                <span className="hidden sm:inline">Delen</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -225,9 +229,9 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
         </div>
       </div>
 
-      {/* Week overzicht */}
-      <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-        {weekDays.map((day) => {
+      {/* Week overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 md:gap-4">
+        {displayDays.map((day) => {
           const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
           const planningsByRoom = getPlanningsByRoom(day);
 
@@ -235,22 +239,22 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
             <Card
               key={day.toISOString()}
               className={cn(
-                "min-w-[280px] md:min-w-0",
+                "min-w-full sm:min-w-0",
                 isToday && "ring-2 ring-[#D9A347] ring-offset-2"
               )}
             >
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4">
                 <div className={cn(
-                  "text-base font-semibold mb-2",
+                  "text-sm font-semibold mb-1 sm:mb-2",
                   isToday ? "text-[#D9A347]" : "text-[#963E56]"
                 )}>
                   {format(day, "EEEE", { locale: nl })}
                 </div>
-                <div className="text-sm text-muted-foreground mb-4">
+                <div className="text-xs text-muted-foreground mb-3 sm:mb-4">
                   {format(day, "d MMMM", { locale: nl })}
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-2 sm:space-y-3">
                   {rooms.map(room => {
                     const roomPlannings = planningsByRoom.get(room.id);
                     if (!roomPlannings) return null;
@@ -268,7 +272,7 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
                                 key={planning.id}
                                 className="text-[11px] leading-tight p-1.5 rounded bg-[#963E56]/5 border border-[#963E56]/10"
                               >
-                                <div className="font-medium text-[#963E56]/90 overflow-hidden">
+                                <div className="font-medium text-[#963E56]/90 overflow-hidden whitespace-nowrap">
                                   {volunteer
                                     ? `${volunteer.firstName} ${volunteer.lastName}`
                                     : 'Niet toegewezen'
@@ -282,7 +286,7 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
                     );
                   })}
                   {planningsByRoom.size === 0 && (
-                    <p className="text-sm text-muted-foreground italic text-center py-4">
+                    <p className="text-xs sm:text-sm text-muted-foreground italic text-center py-3 sm:py-4">
                       Geen toewijzingen
                     </p>
                   )}
@@ -293,51 +297,62 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
         })}
       </div>
 
-      {/* Informatie cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Mobile: Show/Hide full week button */}
+      <div className="block md:hidden text-center">
+        <Button
+          variant="outline"
+          onClick={() => setShowFullWeek(!showFullWeek)}
+          className="w-full"
+        >
+          {showFullWeek ? "Toon minder dagen" : "Toon volledige week"}
+        </Button>
+      </div>
+
+      {/* Information cards */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-3">
-              <Package2 className="h-6 w-6 md:h-8 md:w-8 text-[#963E56]/80" />
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <Package2 className="h-5 w-5 sm:h-8 sm:w-8 text-[#963E56]/80" />
               <div>
-                <p className="text-xs md:text-sm font-medium text-muted-foreground">Uitgeleende Materialen</p>
-                <p className="text-xl md:text-2xl font-bold text-[#963E56]">{checkedOutMaterials}</p>
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Uitgeleende Materialen</p>
+                <p className="text-lg sm:text-2xl font-bold text-[#963E56]">{checkedOutMaterials}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-3">
-              <Users2 className="h-6 w-6 md:h-8 md:w-8 text-[#963E56]/80" />
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <Users2 className="h-5 w-5 sm:h-8 sm:w-8 text-[#963E56]/80" />
               <div>
-                <p className="text-xs md:text-sm font-medium text-muted-foreground">Totaal Vrijwilligers</p>
-                <p className="text-xl md:text-2xl font-bold text-[#963E56]">{totalVolunteers}</p>
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Totaal Vrijwilligers</p>
+                <p className="text-lg sm:text-2xl font-bold text-[#963E56]">{totalVolunteers}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-3">
-              <House className="h-6 w-6 md:h-8 md:w-8 text-[#963E56]/80" />
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <House className="h-5 w-5 sm:h-8 sm:w-8 text-[#963E56]/80" />
               <div>
-                <p className="text-xs md:text-sm font-medium text-muted-foreground">Totaal Ruimtes</p>
-                <p className="text-xl md:text-2xl font-bold text-[#963E56]">{totalRooms}</p>
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Totaal Ruimtes</p>
+                <p className="text-lg sm:text-2xl font-bold text-[#963E56]">{totalRooms}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-3">
-              <UserCheck className="h-6 w-6 md:h-8 md:w-8 text-[#963E56]/80" />
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <UserCheck className="h-5 w-5 sm:h-8 sm:w-8 text-[#963E56]/80" />
               <div>
-                <p className="text-xs md:text-sm font-medium text-muted-foreground">Actieve Vrijwilligers</p>
-                <p className="text-xl md:text-2xl font-bold text-[#963E56]">{activeVolunteers}</p>
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Actieve Vrijwilligers</p>
+                <p className="text-lg sm:text-2xl font-bold text-[#963E56]">{activeVolunteers}</p>
               </div>
             </div>
           </CardContent>

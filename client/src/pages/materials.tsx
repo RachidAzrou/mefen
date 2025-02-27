@@ -494,19 +494,19 @@ const MaterialsPage = () => {
   });
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-7xl space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
-          <Package2 className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary">Materiaalbeheer</h1>
+          <Package2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary">Materiaalbeheer</h1>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
         {checkedOutByType.map(stat => (
-          <Card key={stat.name}>
+          <Card key={stat.name} className="p-2 sm:p-4">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
                 {stat.name}
               </CardTitle>
             </CardHeader>
@@ -514,9 +514,9 @@ const MaterialsPage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   {getMaterialIcon(stat.name)}
-                  <div className="ml-3">
-                    <div className="text-2xl font-bold">{stat.count}</div>
-                    <div className="text-sm text-muted-foreground">van {stat.total}</div>
+                  <div className="ml-2 sm:ml-3">
+                    <div className="text-lg sm:text-2xl font-bold">{stat.count}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">van {stat.total}</div>
                   </div>
                 </div>
               </div>
@@ -526,7 +526,7 @@ const MaterialsPage = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="relative flex-none w-64 sm:w-80">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Zoeken..."
@@ -536,16 +536,16 @@ const MaterialsPage = () => {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           {isAdmin && (
             <Dialog open={isTypesDialogOpen} onOpenChange={setIsTypesDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Settings2 className="h-4 w-4 mr-2" />
-                  Types Beheren
+                  <span className="whitespace-nowrap">Types Beheren</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-[95vw] sm:max-w-[450px] p-4 bg-white">
                 <DialogHeader>
                   <DialogTitle>
                     {editingMaterialType ? "Materiaaltype Bewerken" : "Nieuw Materiaaltype"}
@@ -596,13 +596,13 @@ const MaterialsPage = () => {
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 bg-[#963E56] hover:bg-[#963E56]/90 text-white">
+              <Button className="w-full sm:w-auto gap-2 bg-[#963E56] hover:bg-[#963E56]/90 text-white">
                 <Package2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Toewijzen</span>
+                Toewijzen
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-[95vw] sm:max-w-[600px] p-4 sm:p-6 bg-white border-none shadow-lg mx-4">
-              <DialogHeader className="mb-4 space-y-2">
+            <DialogContent className="max-w-[95vw] sm:max-w-[600px] p-4 bg-white mx-2">
+              <DialogHeader className="mb-4">
                 <DialogTitle className="text-xl font-semibold text-[#963E56]">
                   Materiaal Toewijzen
                 </DialogTitle>
@@ -805,150 +805,131 @@ const MaterialsPage = () => {
               </Form>
             </DialogContent>
           </Dialog>
-
-          {isAdmin && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setIsEditMode(!isEditMode)}
-                    className={`${isEditMode ? "bg-primary/10 text-primary" : ""}`}
-                  >
-                    <Settings2 className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isEditMode ? "Bewerken afsluiten" : "Lijst bewerken"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
         </div>
       </div>
 
       <div className="rounded-lg border bg-card">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {isEditMode && (
-                  <TableHead className="w-[50px]">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
+        <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <div className="min-w-[600px] sm:min-w-full">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {isEditMode && (
+                    <TableHead className="w-[50px]">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={toggleSelectAll}
+                              className="hover:bg-transparent"
+                            >
+                              {selectedMaterials.length === filteredMaterials.length ? (
+                                <CheckSquare className="h-4 w-4" />
+                              ) : (
+                                <Square className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {selectedMaterials.length === filteredMaterials.length ?
+                              "Deselecteer alles" : "Selecteer alles"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableHead>
+                  )}
+                  <TableHead className="whitespace-nowrap">Type</TableHead>
+                  <TableHead className="whitespace-nowrap">Nummer</TableHead>
+                  <TableHead className="whitespace-nowrap">Vrijwilliger</TableHead>
+                  {isEditMode && <TableHead className="w-[100px]">Acties</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMaterials.map((item) => {
+                  const type = materialTypes.find((t) => t.id === item.typeId);
+                  const volunteer = volunteers.find((v) => v.id === item.volunteerId);
+                  return (
+                    <TableRow key={item.id}>
+                      {isEditMode && (
+                        <TableCell>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={toggleSelectAll}
+                            onClick={() => toggleSelect(item.id)}
                             className="hover:bg-transparent"
                           >
-                            {selectedMaterials.length === filteredMaterials.length ? (
+                            {selectedMaterials.includes(item.id) ? (
                               <CheckSquare className="h-4 w-4" />
                             ) : (
                               <Square className="h-4 w-4" />
                             )}
                           </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {selectedMaterials.length === filteredMaterials.length ?
-                            "Deselecteer alles" : "Selecteer alles"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </TableHead>
-                )}
-                <TableHead>Type</TableHead>
-                <TableHead className="hidden sm:table-cell">Nummer</TableHead>
-                <TableHead>Vrijwilliger</TableHead>
-                <TableHead className="hidden sm:table-cell">Status</TableHead>
-                <TableHead>Acties</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMaterials.map((item) => {
-                const type = materialTypes.find((t) => t.id === item.typeId);
-                const volunteer = volunteers.find((v) => v.id === item.volunteerId);
-                return (
-                  <TableRow key={item.id}>
-                    {isEditMode && (
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleSelect(item.id)}
-                          className="hover:bg-transparent"
-                        >
-                          {selectedMaterials.includes(item.id) ? (
-                            <CheckSquare className="h-4 w-4" />
-                          ) : (
-                            <Square className="h-4 w-4" />
-                          )}
-                        </Button>
+                        </TableCell>
+                      )}
+                      <TableCell>{type?.name || "-"}</TableCell>
+                      <TableCell className="whitespace-nowrap">#{item.number}</TableCell>
+                      <TableCell>{volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : "-"}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <Badge variant={item.isCheckedOut ? "default" : "secondary"}>
+                          {item.isCheckedOut ? "Uitgeleend" : "Beschikbaar"}
+                        </Badge>
                       </TableCell>
-                    )}
-                    <TableCell>{type?.name || "-"}</TableCell>
-                    <TableCell className="hidden sm:table-cell">#{item.number}</TableCell>
-                    <TableCell>{volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : "-"}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge variant={item.isCheckedOut ? "default" : "secondary"}>
-                        {item.isCheckedOut ? "Uitgeleend" : "Beschikbaar"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {item.isCheckedOut && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleReturn(item.id)}
-                                  className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
-                                >
-                                  <RotateCcw className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Retourneren</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        {isAdmin && isEditMode && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEdit(item)}
-                                  className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Bewerken</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
+                      {isEditMode && (
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {item.isCheckedOut && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleReturn(item.id)}
+                                      className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
+                                    >
+                                      <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Retourneren</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEdit(item)}
+                                    className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Bewerken</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+                {filteredMaterials.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={isEditMode ? 6 : 5}
+                      className="h-24 text-center"
+                    >
+                      Geen materialen gevonden.
                     </TableCell>
                   </TableRow>
-                );
-              })}
-              {filteredMaterials.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={isEditMode ? 6 : 5}
-                    className="h-24 text-center"
-                  >
-                    Geen materialen gevonden.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
 

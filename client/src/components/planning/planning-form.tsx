@@ -19,9 +19,7 @@ import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { UseFormReturn } from "react-hook-form";
-import { Input } from "@/components/ui/input";
 
-// Keep the same schema
 const planningSchema = z.object({
   volunteerId: z.string().min(1, "Vrijwilliger is verplicht").optional(),
   roomId: z.string().min(1, "Ruimte is verplicht").optional(),
@@ -51,6 +49,12 @@ export function PlanningForm({
 }: PlanningFormProps) {
   const isBulkPlanning = form.watch("isBulkPlanning");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Reset search term when dialog closes
+  const handleClose = () => {
+    setSearchTerm("");
+    onClose();
+  };
 
   return (
     <Form {...form}>
@@ -114,16 +118,16 @@ export function PlanningForm({
                             <SelectItem
                               key={volunteer.id}
                               value={volunteer.id}
-                              className="flex items-center justify-between py-2.5 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                              className="flex items-center py-2.5 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                             >
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 w-full">
                                 <Check
                                   className={cn(
                                     "h-4 w-4 flex-shrink-0",
                                     field.value === volunteer.id ? "opacity-100" : "opacity-0"
                                   )}
                                 />
-                                <span className="flex-grow">{volunteer.firstName} {volunteer.lastName}</span>
+                                <span className="flex-grow truncate">{volunteer.firstName} {volunteer.lastName}</span>
                               </div>
                             </SelectItem>
                           ))}
@@ -176,8 +180,17 @@ export function PlanningForm({
                         <SelectItem
                           key={room.id}
                           value={room.id}
+                          className="cursor-pointer py-2.5 px-3 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                         >
-                          {room.name}
+                          <div className="flex items-center gap-2">
+                            <Check
+                              className={cn(
+                                "h-4 w-4 flex-shrink-0",
+                                field.value === room.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="flex-grow">{room.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -239,16 +252,16 @@ export function PlanningForm({
                             <SelectItem
                               key={volunteer.id}
                               value={volunteer.id}
-                              className="cursor-pointer py-2.5 px-3 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                              className="flex items-center py-2.5 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                             >
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 w-full">
                                 <Check
                                   className={cn(
                                     "h-4 w-4 flex-shrink-0",
                                     field.value?.includes(volunteer.id) ? "opacity-100" : "opacity-0"
                                   )}
                                 />
-                                <span>{volunteer.firstName} {volunteer.lastName}</span>
+                                <span className="flex-grow truncate">{volunteer.firstName} {volunteer.lastName}</span>
                               </div>
                             </SelectItem>
                           ))}
@@ -316,8 +329,17 @@ export function PlanningForm({
                         <SelectItem
                           key={room.id}
                           value={room.id}
+                          className="flex items-center py-2.5 px-3 cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                         >
-                          {room.name}
+                          <div className="flex items-center gap-2 w-full">
+                            <Check
+                              className={cn(
+                                "h-4 w-4 flex-shrink-0",
+                                field.value?.includes(room.id) ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="flex-grow truncate">{room.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -458,7 +480,7 @@ export function PlanningForm({
           <Button
             type="button"
             variant="ghost"
-            onClick={onClose}
+            onClick={handleClose}
           >
             Annuleren
           </Button>

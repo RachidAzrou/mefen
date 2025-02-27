@@ -1,15 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Calendar, Search, Trash2, Plus, Settings2, ChevronsUpDown } from "lucide-react";
+import { Calendar, Search, Trash2, Plus, Settings2 } from "lucide-react";
 import { format, parseISO, startOfDay } from "date-fns";
 import { nl } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,26 +11,14 @@ import { useRole } from "@/hooks/use-role";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/firebase";
 import { ref, onValue, remove, push } from "firebase/database";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlanningForm } from "@/components/planning/planning-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CustomCalendar } from "@/components/ui/calendar";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Check } from "lucide-react";
 import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
@@ -123,9 +104,9 @@ const PlanningTable = ({
   };
 
   return (
-    <div className="space-y-4" onClick={stopPropagation}>
+    <div className="space-y-3 sm:space-y-4">
       {showActions && (
-        <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
@@ -144,10 +125,10 @@ const PlanningTable = ({
                   setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
                 }
               }}
-              className={cn("gap-2 flex-shrink-0", sortByDate && "bg-primary/10 text-primary")}
+              className={cn("w-full sm:w-auto gap-2", sortByDate && "bg-primary/10 text-primary")}
             >
               <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Sorteren op datum</span>
+              <span>Sorteren op datum</span>
               {sortByDate && (sortDirection === 'asc' ? '↑' : '↓')}
             </Button>
             <Popover>
@@ -267,9 +248,9 @@ const PlanningTable = ({
               const room = rooms.find((r) => r.id === planning.roomId);
 
               return (
-                <div key={planning.id} className="p-4 space-y-2">
+                <div key={planning.id} className="p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium">
+                    <div className="font-medium text-sm">
                       {volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : "-"}
                     </div>
                     {showActions && (
@@ -286,16 +267,14 @@ const PlanningTable = ({
                   <div className="text-sm text-muted-foreground">
                     {room ? room.name : "-"}
                   </div>
-                  <div className="text-sm space-y-1">
-                    <div>
-                      {format(parseISO(planning.startDate), "EEEE d MMM yyyy", {
-                        locale: nl,
-                      })}
+                  <div className="text-xs space-y-1 text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>Start: {format(parseISO(planning.startDate), "d MMM yyyy", { locale: nl })}</span>
                     </div>
-                    <div className="text-muted-foreground">
-                      {format(parseISO(planning.endDate), "EEEE d MMM yyyy", {
-                        locale: nl,
-                      })}
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>Eind: {format(parseISO(planning.endDate), "d MMM yyyy", { locale: nl })}</span>
                     </div>
                   </div>
                 </div>
@@ -483,10 +462,10 @@ const Planning = () => {
   });
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-6">
       <div className="flex items-center gap-3">
-        <Calendar className="h-8 w-8 text-[#963E56]" />
-        <h1 className="text-3xl font-bold text-[#963E56]">Planning</h1>
+        <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-[#963E56]" />
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#963E56]">Planning</h1>
       </div>
 
       <CollapsibleSection
@@ -495,58 +474,58 @@ const Planning = () => {
         defaultOpen={true}
         titleClassName="text-[#963E56]"
       >
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 sm:pt-6">
               <div className="flex items-center">
-                <div className="bg-[#963E56]/10 rounded-full p-2 mr-3">
-                  <Calendar className="h-5 w-5 text-[#963E56]" />
+                <div className="bg-[#963E56]/10 rounded-full p-2 mr-2 sm:mr-3">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-[#963E56]" />
                 </div>
                 <div>
                   <div className="text-sm font-medium">Actieve Planningen</div>
-                  <div className="text-2xl font-bold">{activePlannings.length}</div>
+                  <div className="text-lg sm:text-2xl font-bold">{activePlannings.length}</div>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 sm:pt-6">
               <div className="flex items-center">
-                <div className="bg-[#963E56]/10 rounded-full p-2 mr-3">
-                  <Calendar className="h-5 w-5 text-[#963E56]" />
+                <div className="bg-[#963E56]/10 rounded-full p-2 mr-2 sm:mr-3">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-[#963E56]" />
                 </div>
                 <div>
                   <div className="text-sm font-medium">Toekomstige Planningen</div>
-                  <div className="text-2xl font-bold">{upcomingPlannings.length}</div>
+                  <div className="text-lg sm:text-2xl font-bold">{upcomingPlannings.length}</div>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 sm:pt-6">
               <div className="flex items-center">
-                <div className="bg-[#963E56]/10 rounded-full p-2 mr-3">
-                  <Calendar className="h-5 w-5 text-[#963E56]" />
+                <div className="bg-[#963E56]/10 rounded-full p-2 mr-2 sm:mr-3">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-[#963E56]" />
                 </div>
                 <div>
                   <div className="text-sm font-medium">Afgelopen Planningen</div>
-                  <div className="text-2xl font-bold">{pastPlannings.length}</div>
+                  <div className="text-lg sm:text-2xl font-bold">{pastPlannings.length}</div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-4 sm:mt-6 flex justify-end">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 bg-[#963E56] hover:bg-[#963E56]/90">
+              <Button className="w-full sm:w-auto gap-2 bg-[#963E56] hover:bg-[#963E56]/90">
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Inplannen</span>
+                <span>Inplannen</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-[95vw] sm:max-w-[450px] p-4 sm:p-6 bg-white border-none shadow-lg mx-4">
-              <DialogHeader className="mb-4 space-y-2">
+              <DialogHeader className="mb-4">
                 <DialogTitle className="text-xl font-semibold text-[#963E56]">
                   {editingPlanning ? "Planning Bewerken" : "Planning"}
                 </DialogTitle>
@@ -566,10 +545,9 @@ const Planning = () => {
             </DialogContent>
           </Dialog>
         </div>
-
       </CollapsibleSection>
 
-      <div className="space-y-6 bg-background rounded-lg border p-6">
+      <div className="space-y-4 sm:space-y-6 bg-background rounded-lg border p-3 sm:p-6">
         <PlanningSection
           title="Actieve Planningen"
           icon={<Calendar className="h-5 w-5" />}
@@ -586,7 +564,6 @@ const Planning = () => {
             showActions={false}
           />
         </PlanningSection>
-
         <PlanningSection
           title="Toekomstige Planningen"
           icon={<Calendar className="h-5 w-5" />}
@@ -603,7 +580,6 @@ const Planning = () => {
             showActions={false}
           />
         </PlanningSection>
-
         <PlanningSection
           title="Afgelopen Planningen"
           icon={<Calendar className="h-5 w-5" />}
