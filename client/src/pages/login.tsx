@@ -102,7 +102,7 @@ export default function Login() {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
 
       <div className="relative z-10 w-full max-w-[500px]">
-        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl overflow-hidden">
+        <Card className="bg-white border-0 shadow-2xl overflow-hidden">
           <CardContent className="pt-8 px-4 sm:px-8">
             <div className="text-center mb-8">
               <div className="w-full flex justify-center items-center">
@@ -186,7 +186,7 @@ export default function Login() {
             MEFEN Vrijwilligers Management Systeem
           </p>
           <p className="text-white/70 text-xs">
-            Versie 2.1.6
+            Versie 2.1.7
           </p>
         </div>
       </div>
