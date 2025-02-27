@@ -34,7 +34,7 @@ import { db, auth } from "@/lib/firebase";
 import { ref, onValue, remove } from "firebase/database";
 import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, UserPlus, Users, Activity, CalendarIcon } from "lucide-react";
+import { Settings as SettingsIcon, UserPlus, Users, Activity, CalendarIcon, Shield, Key, Trash2, RotateCcw } from "lucide-react";
 import { useRole } from "@/hooks/use-role";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -42,7 +42,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { logUserAction, UserActionTypes, UserAction } from "@/lib/activity-logger";
+import { logUserAction, UserActionTypes, UserAction, getUserLogs } from "@/lib/activity-logger";
 
 type DatabaseUser = {
   uid: string;
@@ -58,19 +58,13 @@ const newUserSchema = z.object({
 
 type NewUserFormData = z.infer<typeof newUserSchema>;
 
-const passwordChangeSchema = z.object({
-  newPassword: z.string().min(6, "Wachtwoord moet minimaal 6 tekens bevatten"),
-});
-
-type PasswordChangeFormData = z.infer<typeof passwordChangeSchema>;
-
 export default function Settings() {
   const [users, setUsers] = useState<DatabaseUser[]>([]);
-  const [changingPasswordFor, setChangingPasswordFor] = useState<string | null>(null);
-  const [deletingUser, setDeletingUser] = useState<DatabaseUser | null>(null);
   const [userLogs, setUserLogs] = useState<(UserAction & { id: string })[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedUser, setSelectedUser] = useState<string>("all");
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<DatabaseUser | null>(null);
   const { toast } = useToast();
   const { isAdmin } = useRole();
 
@@ -79,10 +73,6 @@ export default function Settings() {
     defaultValues: {
       isAdmin: false,
     },
-  });
-
-  const passwordForm = useForm<PasswordChangeFormData>({
-    resolver: zodResolver(passwordChangeSchema),
   });
 
   useEffect(() => {
@@ -104,30 +94,23 @@ export default function Settings() {
   }, []);
 
   useEffect(() => {
-    const logsRef = ref(db, "user_logs");
-    const unsubscribe = onValue(logsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const logsList = Object.entries(data).map(([id, log]: [string, any]) => ({
-          id,
-          ...log
-        }));
-        setUserLogs(logsList);
-      } else {
-        setUserLogs([]);
+    const fetchLogs = async () => {
+      setIsLoadingLogs(true);
+      try {
+        const logs = await getUserLogs({
+          startDate: selectedDate,
+          userId: selectedUser === "all" ? undefined : selectedUser
+        });
+        setUserLogs(logs as (UserAction & { id: string })[]);
+      } catch (error) {
+        console.error("Error fetching logs:", error);
+      } finally {
+        setIsLoadingLogs(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
-  }, []);
-
-  const filteredLogs = userLogs.filter(log => {
-    const logDate = new Date(log.timestamp).toISOString().split('T')[0];
-    const selectedDateStr = selectedDate.toISOString().split('T')[0];
-    const dateMatch = logDate === selectedDateStr;
-    const userMatch = selectedUser === "all" || log.userEmail === selectedUser;
-    return dateMatch && userMatch;
-  }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    fetchLogs();
+  }, [selectedDate, selectedUser]);
 
   const handleRoleChange = async (uid: string, email: string, newIsAdmin: boolean) => {
     try {
@@ -186,14 +169,16 @@ export default function Settings() {
     }
   };
 
-  const handlePasswordChange = async (data: PasswordChangeFormData) => {
-    if (!changingPasswordFor) return;
-
+  const handlePasswordReset = async (email: string) => {
     try {
-      await sendPasswordResetEmail(auth, changingPasswordFor);
+      await sendPasswordResetEmail(auth, email);
       await logUserAction(
-        "Wachtwoord reset",
-        `Wachtwoord reset link verstuurd naar ${changingPasswordFor}`
+        UserActionTypes.USER_PASSWORD_RESET,
+        `Wachtwoord reset link verstuurd naar ${email}`,
+        {
+          type: "user",
+          name: email
+        }
       );
 
       toast({
@@ -201,13 +186,11 @@ export default function Settings() {
         description: "Een wachtwoord reset link is verstuurd naar de gebruiker",
         duration: 3000,
       });
-      setChangingPasswordFor(null);
-      passwordForm.reset();
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Fout",
-        description: error.message || "Kon wachtwoord niet wijzigen",
+        description: error.message || "Kon wachtwoord reset link niet versturen",
         duration: 3000,
       });
     }
@@ -271,23 +254,17 @@ export default function Settings() {
 
     switch (type) {
       case 'material':
-        if (log.materialNumber) {
-          return `${name} #${log.materialNumber}${log.volunteerName ? ` (${log.volunteerName})` : ''}`;
-        }
-        return name;
-
+        return `${name}`;
       case 'volunteer':
       case 'planning':
       case 'user':
       case 'auth':
         return name;
-
       case 'export':
       case 'import':
         return `${name} (${format(new Date(log.timestamp), 'dd/MM/yyyy')})`;
-
       default:
-        return name;
+        return log.details || name;
     }
   };
 
@@ -300,18 +277,16 @@ export default function Settings() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div className="flex items-center gap-3">
-          <SettingsIcon className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold text-primary">Instellingen</h1>
-        </div>
+    <div className="container mx-auto px-4 py-6 max-w-7xl space-y-8">
+      <div className="flex items-center gap-3 mb-8">
+        <SettingsIcon className="h-8 w-8 sm:h-10 sm:w-10 text-[#963E56]" />
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#963E56]">Instellingen</h1>
       </div>
 
-      <Accordion type="single" collapsible className="space-y-4">
-        <AccordionItem value="add-user" className="border rounded-lg overflow-hidden">
-          <AccordionTrigger className="px-6 py-4 bg-gray-50/80 hover:bg-gray-50/90 [&[data-state=open]>svg]:rotate-180">
-            <div className="flex items-center gap-2 text-[#963E56]">
+      <Accordion type="single" collapsible className="space-y-6">
+        <AccordionItem value="add-user" className="border rounded-xl overflow-hidden bg-white shadow-sm">
+          <AccordionTrigger className="px-6 py-4 hover:bg-gray-50/80 data-[state=open]:bg-gray-50/80 transition-colors">
+            <div className="flex items-center gap-3 text-[#963E56]">
               <UserPlus className="h-5 w-5" />
               <span className="font-semibold">Medewerker Toevoegen</span>
             </div>
@@ -319,8 +294,8 @@ export default function Settings() {
           <AccordionContent>
             <div className="p-6">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
                       name="email"
@@ -331,6 +306,7 @@ export default function Settings() {
                             <Input
                               type="email"
                               placeholder="naam@voorbeeld.be"
+                              className="bg-white"
                               {...field}
                             />
                           </FormControl>
@@ -347,7 +323,8 @@ export default function Settings() {
                           <FormControl>
                             <Input
                               type="password"
-                              placeholder="Minimaal 6 tekens, gebruik hoofdletters, cijfers en symbolen"
+                              placeholder="Minimaal 6 tekens"
+                              className="bg-white"
                               {...field}
                             />
                           </FormControl>
@@ -356,6 +333,25 @@ export default function Settings() {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="isAdmin"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4 rounded border-gray-300 text-[#963E56] focus:ring-[#963E56]"
+                          />
+                        </FormControl>
+                        <FormLabel className="!mt-0">Administrator rechten</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="flex justify-end">
                     <Button
                       type="submit"
@@ -371,104 +367,167 @@ export default function Settings() {
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="manage-users" className="border rounded-lg overflow-hidden">
-          <AccordionTrigger className="px-6 py-4 bg-gray-50/80 hover:bg-gray-50/90 [&[data-state=open]>svg]:rotate-180">
-            <div className="flex items-center gap-2 text-[#963E56]">
+        <AccordionItem value="manage-users" className="border rounded-xl overflow-hidden bg-white shadow-sm">
+          <AccordionTrigger className="px-6 py-4 hover:bg-gray-50/80 data-[state=open]:bg-gray-50/80 transition-colors">
+            <div className="flex items-center gap-3 text-[#963E56]">
               <Users className="h-5 w-5" />
               <span className="font-semibold">Gebruikersbeheer</span>
             </div>
           </AccordionTrigger>
           <AccordionContent>
             <div className="p-6">
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50/50">
-                      <TableHead>E-mailadres</TableHead>
-                      <TableHead>Huidige Rol</TableHead>
-                      <TableHead className="text-right">Acties</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div className="rounded-lg border overflow-hidden">
+                <div className="overflow-x-auto">
+                  {/* Desktop view */}
+                  <div className="hidden sm:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50/50">
+                          <TableHead>E-mailadres</TableHead>
+                          <TableHead>Huidige Rol</TableHead>
+                          <TableHead className="text-right">Acties</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((user) => (
+                          <TableRow key={user.uid} className="hover:bg-gray-50/30">
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                user.admin
+                                  ? 'bg-[#963E56]/10 text-[#963E56]'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {user.admin ? 'Admin' : 'Medewerker'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  onClick={() => handleRoleChange(user.uid, user.email, !user.admin)}
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-8 w-8 bg-[#963E56] text-white hover:bg-[#963E56]/90"
+                                  title={`Maak ${user.admin ? 'Medewerker' : 'Admin'}`}
+                                >
+                                  <Shield className="h-4 w-4" />
+                                  <span className="sr-only">{`Maak ${user.admin ? 'Medewerker' : 'Admin'}`}</span>
+                                </Button>
+                                <Button
+                                  onClick={() => handlePasswordReset(user.email)}
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-8 w-8 bg-[#963E56] text-white hover:bg-[#963E56]/90"
+                                  title="Reset Wachtwoord"
+                                >
+                                  <Key className="h-4 w-4" />
+                                  <span className="sr-only">Reset Wachtwoord</span>
+                                </Button>
+                                <Button
+                                  onClick={() => setDeletingUser(user)}
+                                  variant="destructive"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  title="Verwijderen"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Verwijderen</span>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile view */}
+                  <div className="block sm:hidden divide-y">
                     {users.map((user) => (
-                      <TableRow key={user.uid}>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            user.admin
-                              ? 'bg-[#963E56]/10 text-[#963E56]'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {user.admin ? 'Admin' : 'Medewerker'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                      <div key={user.uid} className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{user.email}</div>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${
+                              user.admin
+                                ? 'bg-[#963E56]/10 text-[#963E56]'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {user.admin ? 'Admin' : 'Medewerker'}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
                             <Button
                               onClick={() => handleRoleChange(user.uid, user.email, !user.admin)}
                               variant="outline"
-                              size="sm"
-                              className="min-w-[140px] text-[#963E56] hover:text-[#963E56] hover:bg-[#963E56]/10"
+                              size="icon"
+                              className="h-8 w-8 bg-[#963E56] text-white hover:bg-[#963E56]/90"
+                              title={`Maak ${user.admin ? 'Medewerker' : 'Admin'}`}
                             >
-                              Maak {user.admin ? 'Medewerker' : 'Admin'}
+                              <Shield className="h-4 w-4" />
+                              <span className="sr-only">{`Maak ${user.admin ? 'Medewerker' : 'Admin'}`}</span>
                             </Button>
                             <Button
-                              onClick={() => setChangingPasswordFor(user.email)}
+                              onClick={() => handlePasswordReset(user.email)}
                               variant="outline"
-                              size="sm"
-                              className="min-w-[140px] text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              size="icon"
+                              className="h-8 w-8 bg-[#963E56] text-white hover:bg-[#963E56]/90"
+                              title="Reset Wachtwoord"
                             >
-                              Reset Wachtwoord
+                              <Key className="h-4 w-4" />
+                              <span className="sr-only">Reset Wachtwoord</span>
                             </Button>
                             <Button
                               onClick={() => setDeletingUser(user)}
-                              variant="outline"
-                              size="sm"
-                              className="min-w-[140px] text-red-600 hover:text-red-700 hover:bg-red-50"
+                              variant="destructive"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Verwijderen"
                             >
-                              Verwijderen
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Verwijderen</span>
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </div>
                     ))}
                     {users.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8 text-gray-500">
-                          <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>Geen gebruikers gevonden</p>
-                        </TableCell>
-                      </TableRow>
+                      <div className="text-center py-8 text-gray-500">
+                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Geen gebruikers gevonden</p>
+                      </div>
                     )}
-                  </TableBody>
-                </Table>
+                  </div>
+                </div>
               </div>
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="activity-logs" className="border rounded-lg overflow-hidden">
-          <AccordionTrigger className="px-6 py-4 bg-gray-50/80 hover:bg-gray-50/90 [&[data-state=open]>svg]:rotate-180">
-            <div className="flex items-center gap-2 text-[#963E56]">
+        <AccordionItem value="activity-logs" className="border rounded-xl overflow-hidden bg-white shadow-sm">
+          <AccordionTrigger className="px-6 py-4 hover:bg-gray-50/80 data-[state=open]:bg-gray-50/80 transition-colors">
+            <div className="flex items-center gap-3 text-[#963E56]">
               <Activity className="h-5 w-5" />
               <span className="font-semibold">Gebruikersactiviteit</span>
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="p-6">
-              <Card>
+            <div className="p-6 space-y-6">
+              <Card className="border-none shadow-none bg-gray-50/50">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">Filters</CardTitle>
+                  <CardTitle className="text-lg text-[#963E56]">Filters</CardTitle>
+                  <CardDescription>
+                    Filter de activiteiten op gebruiker en datum
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-                    <div className="w-full sm:w-auto">
-                      <label className="text-sm font-medium mb-1.5 block">Selecteer Gebruiker</label>
-                      <Select
-                        value={selectedUser}
-                        onValueChange={setSelectedUser}
-                      >
-                        <SelectTrigger className="w-full sm:w-[250px]">
+                    <div className="w-full sm:w-auto space-y-1.5">
+                      <label className="text-sm font-medium block">
+                        Selecteer Gebruiker
+                      </label>
+                      <Select value={selectedUser} onValueChange={setSelectedUser}>
+                        <SelectTrigger className="w-full sm:w-[250px] bg-white">
                           <SelectValue placeholder="Alle gebruikers" />
                         </SelectTrigger>
                         <SelectContent>
@@ -482,13 +541,15 @@ export default function Settings() {
                       </Select>
                     </div>
 
-                    <div className="w-full sm:w-auto">
-                      <label className="text-sm font-medium mb-1.5 block">Selecteer Datum</label>
+                    <div className="w-full sm:w-auto space-y-1.5">
+                      <label className="text-sm font-medium block">
+                        Selecteer Datum
+                      </label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant={"outline"}
-                            className="w-full sm:w-[240px] justify-start text-left font-normal"
+                            className="w-full sm:w-[240px] justify-start text-left font-normal bg-white"
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {selectedDate ? (
@@ -510,12 +571,31 @@ export default function Settings() {
                       </Popover>
                     </div>
 
+                    <div className="w-full sm:w-auto space-y-1.5">
+                      <label className="text-sm font-medium block">
+                        Vernieuwen
+                      </label>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsLoadingLogs(true);
+                          setSelectedDate(new Date());
+                          setSelectedUser("all");
+                        }}
+                        size="icon"
+                        className="h-8 w-8"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </div>
+
                     <Button
                       variant="outline"
                       onClick={() => {
                         setSelectedDate(new Date());
                         setSelectedUser("all");
                       }}
+                      className="self-stretch sm:self-auto bg-white"
                     >
                       Reset Filters
                     </Button>
@@ -523,86 +603,71 @@ export default function Settings() {
                 </CardContent>
               </Card>
 
-              <div className="mt-6 rounded-lg border shadow-sm">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50/50">
-                      <TableHead className="w-[180px]">Tijdstip</TableHead>
-                      <TableHead>Gebruiker</TableHead>
-                      <TableHead>Activiteit</TableHead>
-                      <TableHead>Object</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="whitespace-nowrap font-medium">
-                          {format(new Date(log.timestamp), "d MMM yyyy HH:mm:ss", { locale: nl })}
-                        </TableCell>
-                        <TableCell>{log.userEmail}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{getActionIcon(log.action)}</span>
-                            <span>{log.action}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getActionDescription(log)}</TableCell>
+              <div className="rounded-lg border overflow-hidden bg-white">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50/50">
+                        <TableHead className="w-[160px] sm:w-[180px]">Tijdstip</TableHead>
+                        <TableHead>Gebruiker</TableHead>
+                        <TableHead>Activiteit</TableHead>
+                        <TableHead>Details</TableHead>
                       </TableRow>
-                    ))}
-                    {filteredLogs.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                          <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>Geen activiteiten gevonden voor de geselecteerde filters</p>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoadingLogs ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-8">
+                            <div className="flex items-center justify-center">
+                              <Activity className="h-8 w-8 animate-spin" />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : userLogs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                            <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>Geen activiteiten gevonden voor de geselecteerde filters</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        userLogs.map((log) => (
+                          <TableRow key={log.id} className="hover:bg-gray-50/30">
+                            <TableCell className="whitespace-nowrap font-medium text-xs sm:text-sm">
+                              {format(new Date(log.timestamp), "d MMM yyyy HH:mm:ss", { locale: nl })}
+                            </TableCell>
+                            <TableCell className="text-xs sm:text-sm">
+                              {log.userEmail}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg hidden sm:inline">{getActionIcon(log.action)}</span>
+                                <span className="text-xs sm:text-sm">{log.action}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs sm:text-sm max-w-[200px] sm:max-w-none truncate">
+                              {getActionDescription(log)}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
 
-              <p className="text-sm text-gray-500 mt-4">
-                Totaal aantal activiteiten: {filteredLogs.length}
-              </p>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm text-gray-500">
+                <p>
+                  Totaal aantal activiteiten: {userLogs.length}
+                </p>
+                <p className="text-xs">
+                  Activiteiten worden automatisch 30 dagen bewaard
+                </p>
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-
-      {changingPasswordFor && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader className="border-b">
-              <CardTitle className="text-[#963E56]">Wachtwoord Reset</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm">
-                  <p>Er wordt een wachtwoord reset link gestuurd naar:</p>
-                  <p className="font-medium mt-1">{changingPasswordFor}</p>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setChangingPasswordFor(null);
-                      passwordForm.reset();
-                    }}
-                  >
-                    Annuleren
-                  </Button>
-                  <Button
-                    onClick={() => handlePasswordChange(passwordForm.getValues())}
-                    className="bg-[#963E56] hover:bg-[#963E56]/90"
-                  >
-                    Verstuur Reset Link
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {deletingUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

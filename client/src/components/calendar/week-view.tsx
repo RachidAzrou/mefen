@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Download, Share2, Package2, Users2, UserCheck, House } from "lucide-react";
-import { format, addWeeks, startOfWeek, addDays, isWithinInterval } from "date-fns";
+import { format, startOfWeek, addDays, isWithinInterval, isSameDay, parseISO, addWeeks } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
@@ -111,9 +111,15 @@ export function WeekView({ checkedOutMaterials }: WeekViewProps) {
 
   const getPlanningsForDay = (day: Date) => {
     return plannings.filter(planning => {
-      const startDate = new Date(planning.startDate);
-      const endDate = new Date(planning.endDate);
-      return isWithinInterval(day, { start: startDate, end: endDate });
+      // Parse the dates using parseISO to ensure correct date objects
+      const planningStart = parseISO(planning.startDate);
+      const planningEnd = parseISO(planning.endDate);
+
+      // Check if the day falls within the interval (inclusive) or is the same as start/end date
+      return isWithinInterval(day, { 
+        start: planningStart,
+        end: planningEnd 
+      }) || isSameDay(day, planningStart) || isSameDay(day, planningEnd);
     });
   };
 

@@ -1,5 +1,5 @@
 import { Document, Page, View, Text, StyleSheet, Image } from "@react-pdf/renderer";
-import { format, addDays } from "date-fns";
+import { format, addDays, isWithinInterval, isSameDay, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 
 const styles = StyleSheet.create({
@@ -72,13 +72,16 @@ const styles = StyleSheet.create({
     color: '#963E56',
   },
   channelInfo: {
+    backgroundColor: 'rgba(150, 62, 86, 0.1)',
+    borderRadius: 4,
+    paddingVertical: 1,
+    paddingHorizontal: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
   },
   channelText: {
     fontSize: 7,
-    color: 'rgba(150, 62, 86, 0.7)',
+    color: '#963E56',
   },
   planningCard: {
     borderRadius: 2,
@@ -129,20 +132,17 @@ export function CalendarPDF({ weekStart, plannings, logoUrl }: CalendarPDFProps)
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
 
   const getPlanningsForDay = (day: Date) => {
-    const dayPlannings = plannings.filter(planning => 
-      format(planning.date, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')
-    );
+    return plannings.filter(planning => {
+      // Parse the dates using parseISO to ensure correct date objects
+      const planningStart = parseISO(planning.date.toISOString());
+      const planningEnd = parseISO(planning.date.toISOString());
 
-    const roomPlannings = new Map<string, Planning[]>();
-    dayPlannings.forEach(planning => {
-      const roomName = planning.room.name;
-      if (!roomPlannings.has(roomName)) {
-        roomPlannings.set(roomName, []);
-      }
-      roomPlannings.get(roomName)?.push(planning);
+      // Check if the day falls within the interval (inclusive) or is the same as start/end date
+      return isWithinInterval(day, { 
+        start: planningStart,
+        end: planningEnd 
+      }) || isSameDay(day, planningStart) || isSameDay(day, planningEnd);
     });
-
-    return roomPlannings;
   };
 
   return (
@@ -158,7 +158,10 @@ export function CalendarPDF({ weekStart, plannings, logoUrl }: CalendarPDFProps)
         <View style={styles.weekGrid}>
           {weekDays.map((day) => {
             const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-            const planningsByRoom = getPlanningsForDay(day);
+            const planningsByRoom = getPlanningsForDay(day).reduce((acc, curr) => {
+              const roomName = curr.room.name;
+              return acc.set(roomName, [...(acc.get(roomName) || []), curr])
+            }, new Map<string, Planning[]>())
 
             return (
               <View key={day.toISOString()} style={[
@@ -183,8 +186,7 @@ export function CalendarPDF({ weekStart, plannings, logoUrl }: CalendarPDFProps)
                       <Text style={styles.roomName}>{roomName}</Text>
                       {roomPlannings[0]?.room.channel && (
                         <View style={styles.channelInfo}>
-                          <Text style={styles.channelText}>📻</Text>
-                          <Text style={styles.channelText}>{roomPlannings[0].room.channel}</Text>
+                          <Text style={styles.channelText}>KANAAL {roomPlannings[0].room.channel}</Text>
                         </View>
                       )}
                     </View>

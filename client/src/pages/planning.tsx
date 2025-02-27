@@ -2,15 +2,15 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Calendar, Search, Trash2, Plus, Settings2 } from "lucide-react";
-import { format, parseISO, startOfDay } from "date-fns";
+import { Calendar, Search, Plus } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { useRole } from "@/hooks/use-role";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/firebase";
-import { ref, onValue, remove, push } from "firebase/database";
+import { ref, onValue, remove, push, get } from "firebase/database";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlanningForm } from "@/components/planning/planning-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +21,7 @@ import { Calendar as CustomCalendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Check } from "lucide-react";
 import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { logUserAction, UserActionTypes } from "@/lib/activity-logger";
 
 
 const planningSchema = z.object({
@@ -337,6 +338,9 @@ const Planning = () => {
   const [searchActive, setSearchActive] = useState("");
   const [searchUpcoming, setSearchUpcoming] = useState("");
   const [searchPast, setSearchPast] = useState("");
+  const [dateFilterActive, setDateFilterActive] = useState<Date | undefined>();
+  const [dateFilterUpcoming, setDateFilterUpcoming] = useState<Date | undefined>();
+  const [dateFilterPast, setDateFilterPast] = useState<Date | undefined>();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlanning, setEditingPlanning] = useState<Planning | null>(null);
   const { isAdmin } = useRole();
@@ -390,11 +394,32 @@ const Planning = () => {
       isBulkPlanning: false,
     });
     setDialogOpen(true);
+    logUserAction(UserActionTypes.PLANNING_EDIT, "Planning bewerken geopend", { type: 'planning', id: planning.id });
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await remove(ref(db, `plannings/${id}`));
+      // Get planning details before deletion for logging
+      const planningRef = ref(db, `plannings/${id}`);
+      const snapshot = await get(planningRef);
+      const planningData = snapshot.val();
+
+      const volunteer = volunteers.find(v => v.id === planningData.volunteerId);
+      const room = rooms.find(r => r.id === planningData.roomId);
+
+      // Delete the planning
+      await remove(planningRef);
+
+      // Log the delete action with details
+      await logUserAction(
+        UserActionTypes.PLANNING_DELETE,
+        `Planning verwijderd voor ${volunteer?.firstName} ${volunteer?.lastName}`,
+        {
+          type: 'planning',
+          id,
+          details: `Verwijderd uit ${room?.name} (${planningData.startDate} - ${planningData.endDate})`
+        }
+      );
     } catch (error) {
       console.error("Error deleting planning:", error);
     }
@@ -402,36 +427,60 @@ const Planning = () => {
 
   const onSubmit = async (data: z.infer<typeof planningSchema>) => {
     try {
-      if (editingPlanning) {
-        await push(ref(db, `plannings/`), {
+      console.log("Planning submission - Raw data:", {
+        startDate: data.startDate,
+        endDate: data.endDate
+      });
+
+      const planningData = {
+        startDate: format(new Date(data.startDate), 'yyyy-MM-dd'),
+        endDate: format(new Date(data.endDate), 'yyyy-MM-dd')
+      };
+
+      if (data.isBulkPlanning) {
+        const volunteers = data.selectedVolunteers || [];
+        const rooms = data.selectedRooms || [];
+
+        // Log bulk planning creation
+        await logUserAction(
+          UserActionTypes.PLANNING_BULK_CREATE,
+          `Bulk planning aangemaakt voor ${volunteers.length} vrijwilligers en ${rooms.length} ruimtes`,
+          {
+            type: 'planning',
+            details: `Periode: ${planningData.startDate} tot ${planningData.endDate}`
+          }
+        );
+
+        for (const volunteerId of volunteers) {
+          for (const roomId of rooms) {
+            await push(ref(db, "plannings"), {
+              volunteerId,
+              roomId,
+              ...planningData
+            });
+          }
+        }
+      } else {
+        const result = await push(ref(db, "plannings"), {
           volunteerId: data.volunteerId,
           roomId: data.roomId,
-          startDate: data.startDate,
-          endDate: data.endDate,
+          ...planningData
         });
-      } else {
-        if (data.isBulkPlanning) {
-          const volunteers = data.selectedVolunteers || [];
-          const rooms = data.selectedRooms || [];
 
-          for (const volunteerId of volunteers) {
-            for (const roomId of rooms) {
-              await push(ref(db, "plannings"), {
-                volunteerId,
-                roomId,
-                startDate: data.startDate,
-                endDate: data.endDate,
-              });
-            }
+        // Log single planning creation
+        const volunteer = volunteers.find(v => v.id === data.volunteerId);
+        const room = rooms.find(r => r.id === data.roomId);
+
+        await logUserAction(
+          UserActionTypes.PLANNING_CREATE,
+          "Planning toegevoegd",
+          {
+            type: 'planning',
+            id: result.key,
+            details: `${volunteer?.firstName} ${volunteer?.lastName} ingepland voor ${room?.name}`,
+            targetName: `${room?.name} (${planningData.startDate} - ${planningData.endDate})`
           }
-        } else {
-          await push(ref(db, "plannings"), {
-            volunteerId: data.volunteerId,
-            roomId: data.roomId,
-            startDate: data.startDate,
-            endDate: data.endDate,
-          });
-        }
+        );
       }
 
       setDialogOpen(false);
@@ -442,22 +491,86 @@ const Planning = () => {
     }
   };
 
+  const handleSearchChange = async (value: string, type: 'active' | 'upcoming' | 'past') => {
+    // Log search action
+    await logUserAction(
+      UserActionTypes.PLANNING_SEARCH,
+      `Planning gezocht in ${type} planningen`,
+      { type: 'planning', details: `Zoekterm: ${value}` }
+    );
+
+    switch (type) {
+      case 'active':
+        setSearchActive(value);
+        break;
+      case 'upcoming':
+        setSearchUpcoming(value);
+        break;
+      case 'past':
+        setSearchPast(value);
+        break;
+    }
+  };
+
+  const handleDateFilter = async (date: Date | undefined, type: 'active' | 'upcoming' | 'past') => {
+    // Log filter action
+    if (date) {
+      await logUserAction(
+        UserActionTypes.PLANNING_FILTER,
+        `Planning gefilterd op datum`,
+        {
+          type: 'planning',
+          details: `Datum: ${format(date, 'dd-MM-yyyy')}, Type: ${type}`
+        }
+      );
+    }
+    switch (type) {
+      case 'active':
+        setDateFilterActive(date);
+        break;
+      case 'upcoming':
+        setDateFilterUpcoming(date);
+        break;
+      case 'past':
+        setDateFilterPast(date);
+        break;
+    }
+  };
+
+
+  const handleExportPDF = async () => {
+    await logUserAction(
+      UserActionTypes.GENERATE_PLANNING_PDF,
+      "Planning PDF gegenereerd",
+      { type: 'planning' }
+    );
+    // Add PDF generation logic here.  This is a placeholder.
+    console.log("Generating PDF...");
+  };
+
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
   const activePlannings = plannings.filter((planning) => {
     const start = parseISO(planning.startDate);
     const end = parseISO(planning.endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
     return start <= now && end >= now;
   });
 
   const upcomingPlannings = plannings.filter((planning) => {
     const start = parseISO(planning.startDate);
+    start.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
     return start > now;
   });
 
   const pastPlannings = plannings.filter((planning) => {
     const end = parseISO(planning.endDate);
+    end.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
     return end < now;
   });
 
@@ -465,7 +578,7 @@ const Planning = () => {
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6">
       <div className="flex items-center gap-3">
         <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-[#963E56]" />
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#963E56]">Planning</h1>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#963E56]">Planning</h1>
       </div>
 
       <CollapsibleSection
@@ -519,7 +632,9 @@ const Planning = () => {
         <div className="mt-4 sm:mt-6 flex justify-end">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto gap-2 bg-[#963E56] hover:bg-[#963E56]/90">
+              <Button onClick={() => {
+                logUserAction(UserActionTypes.MODAL_OPEN, "Planning modal geopend");
+              }} className="w-full sm:w-auto gap-2 bg-[#963E56] hover:bg-[#963E56]/90">
                 <Plus className="h-4 w-4" />
                 <span>Inplannen</span>
               </Button>
@@ -560,7 +675,7 @@ const Planning = () => {
             rooms={rooms}
             onDelete={handleDelete}
             searchValue={searchActive}
-            onSearchChange={setSearchActive}
+            onSearchChange={(value) => handleSearchChange(value, 'active')}
             showActions={false}
           />
         </PlanningSection>
@@ -576,7 +691,7 @@ const Planning = () => {
             rooms={rooms}
             onDelete={handleDelete}
             searchValue={searchUpcoming}
-            onSearchChange={setSearchUpcoming}
+            onSearchChange={(value) => handleSearchChange(value, 'upcoming')}
             showActions={false}
           />
         </PlanningSection>
@@ -592,7 +707,7 @@ const Planning = () => {
             rooms={rooms}
             onDelete={handleDelete}
             searchValue={searchPast}
-            onSearchChange={setSearchPast}
+            onSearchChange={(value) => handleSearchChange(value, 'past')}
             showActions={false}
           />
         </PlanningSection>

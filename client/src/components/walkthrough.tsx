@@ -30,9 +30,24 @@ const steps: Step[] = [
     element: "[href='/volunteers']"
   },
   {
+    title: "Communicatie",
+    description: "Hier vind je de communicatiekanalen per ruimte.",
+    element: "[href='/communication']"
+  },
+  {
     title: "Materialen",
     description: "Beheer hier alle materialen en zie wie wat in gebruik heeft.",
     element: "[href='/materials']"
+  },
+  {
+    title: "Import/Export",
+    description: "Hier kun je nieuwe aanmeldingen beheren en de huidige vrijwilligerslijst exporteren.",
+    element: "[href='/import-export']"
+  },
+  {
+    title: "Mijn Moskee",
+    description: "Hier vind je alle nodige informatie over de moskee.",
+    element: "[href='/mosque']"
   }
 ];
 
