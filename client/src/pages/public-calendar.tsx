@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format, startOfWeek, addDays, isWithinInterval } from "date-fns";
+import { format, startOfWeek, addDays, parseISO, isSameDay, isWithinInterval } from "date-fns";
 import { nl } from "date-fns/locale";
 import { db } from "@/lib/firebase";
 import { ref, onValue } from "firebase/database";
@@ -16,7 +16,7 @@ type Planning = {
 type Room = {
   id: string;
   name: string;
-  channel?: string; // Added channel property
+  channel?: string;
 };
 
 type Volunteer = {
@@ -68,9 +68,18 @@ export default function PublicCalendar() {
 
   const getPlanningsForDay = (day: Date) => {
     return plannings.filter(planning => {
-      const startDate = new Date(planning.startDate);
-      const endDate = new Date(planning.endDate);
-      return isWithinInterval(day, { start: startDate, end: endDate });
+      const planningStart = parseISO(planning.startDate);
+      const planningEnd = parseISO(planning.endDate);
+
+      const startDate = new Date(planningStart.setHours(0, 0, 0, 0));
+      const endDate = new Date(planningEnd.setHours(0, 0, 0, 0));
+      const checkDate = new Date(day.setHours(0, 0, 0, 0));
+
+      return (
+        isWithinInterval(checkDate, { start: startDate, end: endDate }) ||
+        isSameDay(checkDate, startDate) ||
+        isSameDay(checkDate, endDate)
+      );
     });
   };
 
@@ -107,8 +116,8 @@ export default function PublicCalendar() {
             const planningsByRoom = getPlanningsByRoom(day);
 
             return (
-              <div 
-                key={day.toISOString()} 
+              <div
+                key={day.toISOString()}
                 className={`bg-white rounded-lg shadow p-4 ${
                   isToday ? 'ring-2 ring-[#D9A347] ring-offset-2' : ''
                 }`}
@@ -152,9 +161,6 @@ export default function PublicCalendar() {
                                     : 'Niet toegewezen'
                                   }
                                 </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {format(new Date(planning.startDate), "HH:mm")} - {format(new Date(planning.endDate), "HH:mm")}
-                                </div>
                               </div>
                             );
                           })}
@@ -180,8 +186,8 @@ export default function PublicCalendar() {
             const planningsByRoom = getPlanningsByRoom(day);
 
             return (
-              <div 
-                key={day.toISOString()} 
+              <div
+                key={day.toISOString()}
                 className={`bg-white rounded-lg shadow p-4 ${
                   isToday ? 'ring-2 ring-[#D9A347] ring-offset-2' : ''
                 }`}

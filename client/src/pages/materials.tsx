@@ -136,6 +136,7 @@ const MaterialsPage = () => {
   const [deleteMaterialTypeId, setDeleteMaterialTypeId] = useState<string | null>(null);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [open, setOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1); // Added for pagination
   const { toast } = useToast();
   const { isAdmin } = useRole();
 
@@ -395,13 +396,35 @@ const MaterialsPage = () => {
     setIsTypesDialogOpen(true);
   };
 
+  const normalizeString = (str: string) =>
+    str.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Verwijder diakritische tekens
+
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset pagina bij nieuwe zoekopdracht
+  };
+
   const filteredMaterials = materials.filter(material => {
     if (!material.isCheckedOut) return false;
+    if (!searchTerm.trim()) return true;
 
     const type = materialTypes.find(t => t.id === material.typeId);
     const volunteer = volunteers.find(v => v.id === material.volunteerId);
-    const searchString = `${type?.name || ''} ${volunteer?.firstName || ''} ${volunteer?.lastName || ''} ${material.number}`.toLowerCase();
-    return searchString.includes(searchTerm.toLowerCase());
+
+    const searchNormalized = normalizeString(searchTerm);
+    const typeNameNormalized = normalizeString(type?.name || '');
+    const volunteerNameNormalized = volunteer
+      ? normalizeString(`${volunteer.firstName} ${volunteer.lastName}`)
+      : '';
+    const numberString = material.number.toString();
+
+    return typeNameNormalized.includes(searchNormalized) ||
+           volunteerNameNormalized.includes(searchNormalized) ||
+           numberString.includes(searchNormalized);
   });
 
   const selectedType = materialTypes.find(t => t.id === form.watch("typeId"));
@@ -529,10 +552,12 @@ const MaterialsPage = () => {
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Zoeken..."
+            placeholder="Zoek op type, nummer of vrijwilliger..."
+            onChange={handleSearch}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 w-full"
+            type="search"
+            autoComplete="off"
           />
         </div>
 
@@ -630,7 +655,7 @@ const MaterialsPage = () => {
                                   type="text"
                                   placeholder="Zoek vrijwilliger..."
                                   value={searchTerm}
-                                  onChange={(e) => setSearchTerm(e.target.value)}
+                                  onChange={handleSearch}
                                   onClick={(e) => e.stopPropagation()}
                                   className="w-full pl-9 h-9 rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
                                 />
@@ -822,53 +847,51 @@ const MaterialsPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {materials
-                  .filter(material => material.isCheckedOut)
-                  .map((item) => {
-                    const type = materialTypes.find(t => t.id === item.typeId);
-                    const volunteer = volunteers.find((v) => v.id === item.volunteerId);
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell className="capitalize">
-                          {type?.name || 'Onbekend type'}
-                        </TableCell>
-                        <TableCell>{item.number}</TableCell>
-                        <TableCell>
-                          {volunteer
-                            ? `${volunteer.firstName} ${volunteer.lastName}`
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className="bg-[#963E56]/10 text-[#963E56] border-[#963E56]/20"
-                          >
-                            Uitgeleend
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleReturn(item.id)}
-                                  className="h-8 w-8 text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
-                                >
-                                  <RotateCcw className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                Retourneren
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                {materials.filter(m => m.isCheckedOut).length === 0 && (
+                {filteredMaterials.map((item) => {
+                  const type = materialTypes.find(t => t.id === item.typeId);
+                  const volunteer = volunteers.find((v) => v.id === item.volunteerId);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="capitalize">
+                        {type?.name || 'Onbekend type'}
+                      </TableCell>
+                      <TableCell>{item.number}</TableCell>
+                      <TableCell>
+                        {volunteer
+                          ? `${volunteer.firstName} ${volunteer.lastName}`
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className="bg-[#963E56]/10 text-[#963E56] border-[#963E56]/20"
+                        >
+                          Uitgeleend
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleReturn(item.id)}
+                                className="h-8 w-8 text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Retourneren
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filteredMaterials.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={5}
@@ -879,8 +902,7 @@ const MaterialsPage = () => {
                   </TableRow>
                 )}
               </TableBody>
-            </Table>
-          </div>
+            </Table>          </div>
         </div>
       </div>
 

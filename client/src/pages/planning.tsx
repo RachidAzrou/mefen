@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Calendar, Search, Plus, Settings2, Trash2 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Calendar, Search, Plus, Settings2, Trash2, Edit2 } from "lucide-react"; // Import Edit2
+import { format, parseISO, startOfDay } from "date-fns";
 import { nl } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -18,6 +18,7 @@ import { useForm, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CustomCalendar } from "@/components/ui/calendar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Check } from "lucide-react";
 import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -48,6 +49,7 @@ const PlanningTable = ({
   volunteers,
   rooms,
   onDelete,
+  onEdit,
   searchValue,
   onSearchChange,
   showActions = false,
@@ -57,6 +59,7 @@ const PlanningTable = ({
   volunteers: { id: string; firstName: string; lastName: string; }[];
   rooms: { id: string; name: string; }[];
   onDelete: (id: string) => void;
+  onEdit?: (planning: Planning) => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
   showActions?: boolean;
@@ -169,7 +172,6 @@ const PlanningTable = ({
       )}
 
       <div className="rounded-lg border overflow-hidden">
-        {/* Desktop view */}
         <div className="hidden sm:block">
           <Table>
             <TableHeader>
@@ -177,11 +179,71 @@ const PlanningTable = ({
                 <TableHead>Vrijwilliger</TableHead>
                 <TableHead>Ruimte</TableHead>
                 <TableHead>Periode</TableHead>
-                {showActions && <TableHead className="w-[100px]">Acties</TableHead>}
+                {showActions && <TableHead className="w-[150px]">Acties</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedPlannings.length === 0 ? (
+              {sortedPlannings.map((planning) => {
+                const volunteer = volunteers.find((v) => v.id === planning.volunteerId);
+                const room = rooms.find((r) => r.id === planning.roomId);
+
+                return (
+                  <TableRow key={planning.id}>
+                    <TableCell className="font-medium">
+                      {volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : "-"}
+                    </TableCell>
+                    <TableCell>{room ? room.name : "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1 text-sm">
+                        <div className="whitespace-nowrap">
+                          {format(parseISO(planning.startDate), "EEEE d MMM yyyy", {
+                            locale: nl,
+                          })}
+                        </div>
+                        <div className="whitespace-nowrap text-muted-foreground">
+                          {format(parseISO(planning.endDate), "EEEE d MMM yyyy", {
+                            locale: nl,
+                          })}
+                        </div>
+                      </div>
+                    </TableCell>
+                    {showActions && (
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {onEdit && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => onEdit(planning)}
+                                    className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Bewerken
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onDelete(planning.id)}
+                            className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
+              {sortedPlannings.length === 0 && (
                 <TableRow>
                   <TableCell
                     colSpan={showActions ? 4 : 3}
@@ -190,54 +252,11 @@ const PlanningTable = ({
                     {emptyMessage}
                   </TableCell>
                 </TableRow>
-              ) : (
-                sortedPlannings.map((planning) => {
-                  const volunteer = volunteers.find((v) => v.id === planning.volunteerId);
-                  const room = rooms.find((r) => r.id === planning.roomId);
-
-                  return (
-                    <TableRow key={planning.id}>
-                      <TableCell className="font-medium">
-                        {volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : "-"}
-                      </TableCell>
-                      <TableCell>{room ? room.name : "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1 text-sm">
-                          <div className="whitespace-nowrap">
-                            {format(parseISO(planning.startDate), "EEEE d MMM yyyy", {
-                              locale: nl,
-                            })}
-                          </div>
-                          <div className="whitespace-nowrap text-muted-foreground">
-                            {format(parseISO(planning.endDate), "EEEE d MMM yyyy", {
-                              locale: nl,
-                            })}
-                          </div>
-                        </div>
-                      </TableCell>
-                      {showActions && (
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onDelete(planning.id)}
-                              className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })
               )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Mobile view */}
         <div className="block sm:hidden divide-y">
           {sortedPlannings.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">
@@ -255,14 +274,26 @@ const PlanningTable = ({
                       {volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : "-"}
                     </div>
                     {showActions && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(planning.id)}
-                        className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {onEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEdit(planning)}
+                            className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDelete(planning.id)}
+                          className="text-[#963E56] hover:text-[#963E56]/90 hover:bg-[#963E56]/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -392,14 +423,14 @@ const Planning = () => {
       startDate: planning.startDate,
       endDate: planning.endDate,
       isBulkPlanning: false,
+      selectedVolunteers: [],
+      selectedRooms: []
     });
     setDialogOpen(true);
-    logUserAction(UserActionTypes.PLANNING_EDIT, "Planning bewerken geopend", { type: 'planning', id: planning.id });
   };
 
   const handleDelete = async (id: string) => {
     try {
-      // Get planning details before deletion for logging
       const planningRef = ref(db, `plannings/${id}`);
       const snapshot = await get(planningRef);
       const planningData = snapshot.val();
@@ -407,10 +438,8 @@ const Planning = () => {
       const volunteer = volunteers.find(v => v.id === planningData.volunteerId);
       const room = rooms.find(r => r.id === planningData.roomId);
 
-      // Delete the planning
       await remove(planningRef);
 
-      // Log the delete action with details
       await logUserAction(
         UserActionTypes.PLANNING_DELETE,
         `Planning verwijderd voor ${volunteer?.firstName} ${volunteer?.lastName}`,
@@ -427,11 +456,6 @@ const Planning = () => {
 
   const onSubmit = async (data: z.infer<typeof planningSchema>) => {
     try {
-      console.log("Planning submission - Raw data:", {
-        startDate: data.startDate,
-        endDate: data.endDate
-      });
-
       const planningData = {
         startDate: format(new Date(data.startDate), 'yyyy-MM-dd'),
         endDate: format(new Date(data.endDate), 'yyyy-MM-dd')
@@ -441,7 +465,6 @@ const Planning = () => {
         const volunteers = data.selectedVolunteers || [];
         const rooms = data.selectedRooms || [];
 
-        // Log bulk planning creation
         await logUserAction(
           UserActionTypes.PLANNING_BULK_CREATE,
           `Bulk planning aangemaakt voor ${volunteers.length} vrijwilligers en ${rooms.length} ruimtes`,
@@ -467,7 +490,6 @@ const Planning = () => {
           ...planningData
         });
 
-        // Log single planning creation
         const volunteer = volunteers.find(v => v.id === data.volunteerId);
         const room = rooms.find(r => r.id === data.roomId);
 
@@ -492,7 +514,6 @@ const Planning = () => {
   };
 
   const handleSearchChange = async (value: string, type: 'active' | 'upcoming' | 'past') => {
-    // Log search action
     await logUserAction(
       UserActionTypes.PLANNING_SEARCH,
       `Planning gezocht in ${type} planningen`,
@@ -513,7 +534,6 @@ const Planning = () => {
   };
 
   const handleDateFilter = async (date: Date | undefined, type: 'active' | 'upcoming' | 'past') => {
-    // Log filter action
     if (date) {
       await logUserAction(
         UserActionTypes.PLANNING_FILTER,
@@ -544,7 +564,6 @@ const Planning = () => {
       "Planning PDF gegenereerd",
       { type: 'planning' }
     );
-    // Add PDF generation logic here.  This is a placeholder.
     console.log("Generating PDF...");
   };
 
@@ -674,9 +693,10 @@ const Planning = () => {
             volunteers={volunteers}
             rooms={rooms}
             onDelete={handleDelete}
+            onEdit={handleEdit}
             searchValue={searchActive}
             onSearchChange={(value) => handleSearchChange(value, 'active')}
-            showActions={false}
+            showActions={true}
           />
         </PlanningSection>
         <PlanningSection
@@ -690,9 +710,10 @@ const Planning = () => {
             volunteers={volunteers}
             rooms={rooms}
             onDelete={handleDelete}
+            onEdit={handleEdit}
             searchValue={searchUpcoming}
             onSearchChange={(value) => handleSearchChange(value, 'upcoming')}
-            showActions={false}
+            showActions={true}
           />
         </PlanningSection>
         <PlanningSection
@@ -706,9 +727,10 @@ const Planning = () => {
             volunteers={volunteers}
             rooms={rooms}
             onDelete={handleDelete}
+            onEdit={handleEdit}
             searchValue={searchPast}
             onSearchChange={(value) => handleSearchChange(value, 'past')}
-            showActions={false}
+            showActions={true}
           />
         </PlanningSection>
       </div>
