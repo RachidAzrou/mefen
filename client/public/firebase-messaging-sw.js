@@ -1,5 +1,5 @@
 // Cache version
-const CACHE_VERSION = 'v2.2.1';
+const CACHE_VERSION = 'v2.2.2';
 const CACHE_NAME = `mefen-cache-${CACHE_VERSION}`;
 
 // Assets to cache
