@@ -10,13 +10,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { ref, push, remove, update, onValue } from "firebase/database";
-import { UserPlus, Edit2, Trash2, Search, Users, CheckSquare, Square, Settings2, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { UserPlus, Edit2, Trash2, Search, Users, CheckSquare, Square, Settings2, ChevronLeft, ChevronRight, ArrowUpDown, CheckCircle2, XCircle } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logUserAction, UserActionTypes } from "@/lib/activity-logger";
+import { format, parseISO, isWithinInterval, startOfToday, endOfToday } from "date-fns";
+
+const ITEMS_PER_PAGE = 10;
+
+type SortOrder = "firstName-asc" | "firstName-desc" | "lastName-asc" | "lastName-desc";
 
 const volunteerSchema = z.object({
   firstName: z.string().min(1, "Voornaam is verplicht"),
@@ -24,14 +29,21 @@ const volunteerSchema = z.object({
   phoneNumber: z.string().min(1, "Telefoonnummer is verplicht"),
 });
 
-type Volunteer = z.infer<typeof volunteerSchema> & { id: string };
+type Volunteer = z.infer<typeof volunteerSchema> & { 
+  id: string;
+  isActive?: boolean;
+};
 
-const ITEMS_PER_PAGE = 10;
-
-type SortOrder = "firstName-asc" | "firstName-desc" | "lastName-asc" | "lastName-desc";
+type Planning = {
+  id: string;
+  volunteerId: string;
+  startDate: string;
+  endDate: string;
+};
 
 export default function Volunteers() {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [plannings, setPlannings] = useState<Planning[]>([]);
   const [editingVolunteer, setEditingVolunteer] = useState<Volunteer | null>(null);
   const [deleteVolunteerId, setDeleteVolunteerId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,20 +52,14 @@ export default function Volunteers() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<SortOrder>("lastName-asc");
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const { toast } = useToast();
-
-  const form = useForm<z.infer<typeof volunteerSchema>>({
-    resolver: zodResolver(volunteerSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      phoneNumber: "",
-    },
-  });
 
   useEffect(() => {
     const volunteersRef = ref(db, "volunteers");
-    const unsubscribe = onValue(volunteersRef, (snapshot) => {
+    const planningsRef = ref(db, "plannings");
+
+    onValue(volunteersRef, (snapshot) => {
       const data = snapshot.val();
       const volunteersList = data ? Object.entries(data).map(([id, volunteer]) => ({
         id,
@@ -62,8 +68,43 @@ export default function Volunteers() {
       setVolunteers(volunteersList);
     });
 
-    return () => unsubscribe();
+    onValue(planningsRef, (snapshot) => {
+      const data = snapshot.val();
+      const planningsList = data ? Object.entries(data).map(([id, planning]) => ({
+        id,
+        ...(planning as Omit<Planning, "id">),
+      })) : [];
+      setPlannings(planningsList);
+    });
   }, []);
+
+  // Get volunteers active today (have a planning for today)
+  const activeVolunteers = volunteers.filter(volunteer => {
+    const today = new Date();
+    return plannings.some(planning => {
+      const planningStart = parseISO(planning.startDate);
+      const planningEnd = parseISO(planning.endDate);
+      return planning.volunteerId === volunteer.id && 
+             isWithinInterval(today, { 
+               start: planningStart,
+               end: planningEnd 
+             });
+    });
+  });
+
+  // Get inactive volunteers (not scheduled today)
+  const inactiveVolunteers = volunteers.filter(volunteer => {
+    const today = new Date();
+    return !plannings.some(planning => {
+      const planningStart = parseISO(planning.startDate);
+      const planningEnd = parseISO(planning.endDate);
+      return planning.volunteerId === volunteer.id && 
+             isWithinInterval(today, { 
+               start: planningStart,
+               end: planningEnd 
+             });
+    });
+  });
 
   const resetForm = () => {
     form.reset();
@@ -203,17 +244,51 @@ export default function Volunteers() {
     setDialogOpen(true);
   };
 
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setCurrentPage(1); 
+  };
+
+  const normalizeString = (str: string) => 
+    str.toLowerCase()
+       .normalize('NFD')
+       .replace(/[\u0300-\u036f]/g, ''); 
+
+  // Update the filtered volunteers logic
   const filteredVolunteers = volunteers.filter(volunteer => {
-    const searchString = `${volunteer.firstName} ${volunteer.lastName} ${volunteer.phoneNumber}`.toLowerCase();
-    return searchString.includes(searchTerm.toLowerCase());
+    // First apply active/inactive filter
+    if (activeFilter === 'active') {
+      if (!activeVolunteers.some(v => v.id === volunteer.id)) {
+        return false;
+      }
+    } else if (activeFilter === 'inactive') {
+      if (!inactiveVolunteers.some(v => v.id === volunteer.id)) {
+        return false;
+      }
+    }
+
+    // Then apply search filter
+    if (!searchTerm.trim()) return true;
+
+    const searchNormalized = normalizeString(searchTerm);
+    const firstNameNormalized = normalizeString(volunteer.firstName);
+    const lastNameNormalized = normalizeString(volunteer.lastName);
+    const phoneNormalized = normalizeString(volunteer.phoneNumber);
+    const fullNameNormalized = `${firstNameNormalized} ${lastNameNormalized}`;
+
+    return firstNameNormalized.includes(searchNormalized) ||
+           lastNameNormalized.includes(searchNormalized) ||
+           phoneNormalized.includes(searchNormalized) ||
+           fullNameNormalized.includes(searchNormalized);
   });
 
   const sortedVolunteers = [...filteredVolunteers].sort((a, b) => {
     const [field, direction] = sortOrder.split("-");
-    const compareValue = field === "firstName"
-      ? a.firstName.localeCompare(b.firstName)
-      : a.lastName.localeCompare(b.lastName);
-    return direction === "asc" ? compareValue : -compareValue;
+    const fieldA = field === "firstName" ? a.firstName : a.lastName;
+    const fieldB = field === "firstName" ? b.firstName : b.lastName;
+    const compareResult = fieldA.localeCompare(fieldB, 'nl');
+    return direction === "asc" ? compareResult : -compareResult;
   });
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -234,6 +309,22 @@ export default function Volunteers() {
     );
   };
 
+  // Toggle filter function
+  const toggleFilter = (filter: 'all' | 'active' | 'inactive') => {
+    setActiveFilter(current => current === filter ? 'all' : filter);
+    setCurrentPage(1); // Reset to first page when changing filter
+  };
+
+  const form = useForm<z.infer<typeof volunteerSchema>>({
+    resolver: zodResolver(volunteerSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      phoneNumber: "",
+    },
+  });
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -241,27 +332,61 @@ export default function Volunteers() {
         <h1 className="text-3xl font-bold text-[#963E56]">Vrijwilligers</h1>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center">
-            <Users className="h-8 w-8 text-[#963E56]/80" />
-            <div className="ml-4">
-              <h3 className="text-sm font-medium text-gray-500">Totaal Aantal Vrijwilligers</h3>
+      {/* Statistics Blocks */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Totaal Vrijwilligers</p>
               <p className="text-2xl font-bold text-[#963E56]">{volunteers.length}</p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            <Users className="h-8 w-8 text-[#963E56]" />
+          </CardContent>
+        </Card>
+
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            activeFilter === 'active' ? 'ring-2 ring-[#963E56] ring-offset-2' : ''
+          }`}
+          onClick={() => toggleFilter('active')}
+        >
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Ingepland Vandaag</p>
+              <p className="text-2xl font-bold text-[#963E56]">{activeVolunteers.length}</p>
+            </div>
+            <CheckCircle2 className="h-8 w-8 text-[#963E56]" />
+          </CardContent>
+        </Card>
+
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            activeFilter === 'inactive' ? 'ring-2 ring-[#963E56] ring-offset-2' : ''
+          }`}
+          onClick={() => toggleFilter('inactive')}
+        >
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Niet Ingepland</p>
+              <p className="text-2xl font-bold text-[#963E56]">{inactiveVolunteers.length}</p>
+            </div>
+            <XCircle className="h-8 w-8 text-[#963E56]" />
+          </CardContent>
+        </Card>
+      </div>
+
 
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
-              placeholder="Zoeken..."
+              placeholder="Zoek op naam of telefoonnummer..."
+              onChange={handleSearch}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 w-full"
+              type="search"
+              autoComplete="off"
             />
           </div>
           <Select
@@ -284,7 +409,6 @@ export default function Volunteers() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* Main action button - Add Volunteer or Bulk Action */}
           {selectedVolunteers.length > 0 ? (
             <Button
               className="bg-[#963E56] hover:bg-[#963E56]/90 flex-1 sm:flex-none"
@@ -374,7 +498,6 @@ export default function Volunteers() {
               </DialogContent>
             </Dialog>
           )}
-
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -507,7 +630,6 @@ export default function Volunteers() {
         </div>
       )}
 
-      {/* Bulk Actions */}
       {isEditMode && selectedVolunteers.length > 0 && (
         <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 flex items-center gap-3 bg-white p-4 rounded-lg shadow-lg border animate-in slide-in-from-bottom-2">
           <span className="text-sm text-muted-foreground hidden sm:inline">
@@ -525,7 +647,6 @@ export default function Volunteers() {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={!!deleteVolunteerId}
         onOpenChange={() => setDeleteVolunteerId(null)}
