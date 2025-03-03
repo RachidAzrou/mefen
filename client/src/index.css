@@ -9,7 +9,7 @@
 
   body {
     @apply font-sans antialiased text-foreground;
-    background: url('/static/geometric-pattern.jpg') center center/cover no-repeat,
+    background: url('/pattern.jpg') center/cover fixed no-repeat,
                 linear-gradient(135deg, rgba(245, 247, 250, 0.7), rgba(195, 207, 226, 0.7));
     background-blend-mode: overlay;
     min-height: 100vh;
@@ -17,18 +17,23 @@
   }
 
   /* Make containers slightly transparent to show pattern */
-  .bg-card {
-    background-color: rgba(255, 255, 255, 0.85) !important;
+  .bg-card, 
+  .bg-background,
+  .accordion-item {
+    background-color: rgba(255, 255, 255, 0.9) !important;
     backdrop-filter: blur(8px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  }
-
-  .bg-background {
-    background-color: rgba(255, 255, 255, 0.8) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   }
 
   /* Ensure text remains readable */
   .text-foreground {
     color: #1a1a1a !important;
+  }
+
+  /* Add subtle hover effects */
+  .bg-card:hover,
+  .accordion-item:hover {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    transition: all 0.2s ease-in-out;
   }
 }

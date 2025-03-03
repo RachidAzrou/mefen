@@ -8,7 +8,7 @@ import {
   Package2, LogOut, Menu, ChevronLeft, ChevronRight,
   Settings, FileJson, User, House, Radio
 } from "lucide-react";
-import { PiMosqueLight } from "react-icons/pi";
+import { PiMosqueLight, PiUsersThree } from "react-icons/pi";
 import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
@@ -60,16 +60,17 @@ export function Sidebar() {
     { icon: LayoutDashboard, label: "Dashboard", href: "/" },
     { icon: Calendar, label: "Planning", href: "/planning" },
     { icon: Users, label: "Vrijwilligers", href: "/volunteers" },
-    { icon: House, label: "Ruimtes", href: "/rooms", adminOnly: true },
-    { icon: Radio, label: "Communicatie", href: "/communication" }, 
     { icon: Package2, label: "Materialen", href: "/materials" },
+    { icon: Radio, label: "Communicatie", href: "/communication" },
+    { icon: PiUsersThree, label: "Sufuf", href: "/sufuf" },
     {
       icon: FileJson,
       label: "Import/Export",
       href: "/import-export",
       notificationCount: unreadCount
     },
-    { icon: PiMosqueLight, label: "Mijn Moskee", href: "/mosque" }
+    { icon: PiMosqueLight, label: "Mijn Moskee", href: "/mosque" },
+    { icon: House, label: "Ruimtes", href: "/rooms", adminOnly: true },
   ].filter(item => !item.adminOnly || isAdmin);
 
   return (
