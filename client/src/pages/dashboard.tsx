@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { ref, onValue } from "firebase/database";
 import { LayoutGrid, Users, Package2, CheckCircle2, DoorOpen } from "lucide-react";
@@ -41,6 +41,11 @@ type Planning = {
   roomId: string;
   startDate: string;
   endDate: string;
+};
+
+const getMaterialIcon = (typeName: string) => {
+  // Placeholder - Replace with actual icon logic based on typeName
+  return <Package2 className="h-6 w-6 text-[#963E56]" />;
 };
 
 export default function Dashboard() {
@@ -120,10 +125,10 @@ export default function Dashboard() {
       const planningStart = parseISO(planning.startDate);
       const planningEnd = parseISO(planning.endDate);
 
-      return planning.volunteerId === volunteer.id && 
-             isWithinInterval(today, { 
+      return planning.volunteerId === volunteer.id &&
+             isWithinInterval(today, {
                start: planningStart,
-               end: planningEnd 
+               end: planningEnd
              });
     });
   });
@@ -134,11 +139,28 @@ export default function Dashboard() {
     const planningStart = parseISO(planning.startDate);
     const planningEnd = parseISO(planning.endDate);
 
-    return isWithinInterval(today, { 
+    return isWithinInterval(today, {
       start: planningStart,
-      end: planningEnd 
+      end: planningEnd
     });
   });
+
+  // Groepeer materialen per type voor de pop-up
+  const checkedOutMaterialsByType = useMemo(() => {
+    return checkedOutMaterials.reduce((acc, material) => {
+      const type = materialTypes.find(t => t.id === material.typeId);
+      if (!type) return acc;
+
+      if (!acc[type.id]) {
+        acc[type.id] = {
+          type,
+          materials: []
+        };
+      }
+      acc[type.id].materials.push(material);
+      return acc;
+    }, {} as Record<string, { type: MaterialType, materials: Material[] }>);
+  }, [checkedOutMaterials, materialTypes]);
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6">
@@ -149,7 +171,7 @@ export default function Dashboard() {
 
       {/* Statistics Blocks - Above the calendar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-        <Card 
+        <Card
           className="cursor-pointer transition-all hover:shadow-md hover:bg-[#963E56]/5"
           onClick={() => setSelectedBlock('materials')}
         >
@@ -171,7 +193,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           className="cursor-pointer transition-all hover:shadow-md hover:bg-[#963E56]/5"
           onClick={() => setSelectedBlock('volunteers')}
         >
@@ -193,7 +215,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           className="cursor-pointer transition-all hover:shadow-md hover:bg-[#963E56]/5"
           onClick={() => setSelectedBlock('rooms')}
         >
@@ -215,7 +237,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           className="cursor-pointer transition-all hover:shadow-md hover:bg-[#963E56]/5"
           onClick={() => setSelectedBlock('active')}
         >
@@ -257,37 +279,45 @@ export default function Dashboard() {
           </DialogHeader>
           <ScrollArea className="max-h-[60vh] rounded-lg border bg-card">
             {selectedBlock === 'materials' && (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="font-semibold">Type</TableHead>
-                    <TableHead className="font-semibold">Nummer</TableHead>
-                    <TableHead className="font-semibold">Uitgeleend aan</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {checkedOutMaterials.map(material => {
-                    const type = materialTypes.find(t => t.id === material.typeId);
-                    const volunteer = volunteers.find(v => v.id === material.volunteerId);
-                    return (
-                      <TableRow key={material.id}>
-                        <TableCell className="font-medium">{type?.name || 'Onbekend'}</TableCell>
-                        <TableCell>#{material.number}</TableCell>
-                        <TableCell>
-                          {volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : 'Onbekend'}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {checkedOutMaterials.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                        Geen uitgeleende materialen
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              <div className="divide-y divide-border">
+                {Object.entries(checkedOutMaterialsByType).map(([typeId, { type, materials }]) => (
+                  <div key={typeId} className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      {getMaterialIcon(type.name)}
+                      <h3 className="font-medium text-[#963E56]">{type.name}</h3>
+                      <Badge variant="outline" className="ml-2">
+                        {materials.length} uitgeleend
+                      </Badge>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="font-semibold">Nummer</TableHead>
+                          <TableHead className="font-semibold">Uitgeleend aan</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {materials.map(material => {
+                          const volunteer = volunteers.find(v => v.id === material.volunteerId);
+                          return (
+                            <TableRow key={material.id}>
+                              <TableCell>#{material.number}</TableCell>
+                              <TableCell>
+                                {volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : 'Onbekend'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ))}
+                {checkedOutMaterials.length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    Geen uitgeleende materialen
+                  </div>
+                )}
+              </div>
             )}
             {selectedBlock === 'volunteers' && (
               <Table>
