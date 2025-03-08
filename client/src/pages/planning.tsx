@@ -195,93 +195,98 @@ const PlanningTable = ({
           </div>
         ) : (
           Object.entries(sortedPlanningsByRoom).map(([roomId, { room, plannings }]) => (
-            <Card key={roomId} className="overflow-hidden">
-              <button
-                className="w-full px-6 py-4 border-b flex items-center justify-between hover:bg-accent/5 transition-colors"
-                onClick={() => toggleRoom(roomId)}
-              >
-                <div className="flex items-center gap-3">
-                  <House className="h-5 w-5" />
-                  <h3 className="font-medium">{room.name}</h3>
-                  <div className="text-sm text-muted-foreground">
-                    ({plannings.length} planning{plannings.length !== 1 ? 'en' : ''})
+            <div key={roomId} className="space-y-4">
+              <Card key={roomId} className="overflow-hidden">
+                <button
+                  className="w-full px-6 py-4 border-b flex items-center justify-between hover:bg-[#963E56]/5 transition-colors"
+                  onClick={() => toggleRoom(roomId)}
+                >
+                  <div className="flex items-center gap-3">
+                    <House className="h-5 w-5 text-[#963E56]" />
+                    <h3 className="font-medium text-[#963E56]">{room.name}</h3>
+                    <div className="text-sm text-[#963E56]/70">
+                      ({plannings.length} planning{plannings.length !== 1 ? 'en' : ''})
+                    </div>
                   </div>
-                </div>
-                <ChevronRight className={cn(
-                  "h-5 w-5 text-muted-foreground transition-transform",
-                  expandedRooms[roomId] && "transform rotate-90"
-                )} />
-              </button>
+                  <ChevronRight className={cn(
+                    "h-5 w-5 text-[#963E56]/70 transition-transform",
+                    expandedRooms[roomId] && "transform rotate-90"
+                  )} />
+                </button>
 
-              {expandedRooms[roomId] && (
-                <div className="divide-y divide-border">
-                  {plannings.map((planning) => {
-                    const volunteer = volunteers.find((v) => v.id === planning.volunteerId);
-                    return (
-                      <div key={planning.id} className="p-4 sm:p-6">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                {volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : "-"}
-                              </span>
-                              {planning.isResponsible && (
-                                <UserCircle2 className="w-4 h-4" />
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1.5">
-                                <Calendar className="h-4 w-4" />
-                                <span>
-                                  {format(parseISO(planning.startDate), "EEEE d MMM yyyy", { locale: nl })}
+                {expandedRooms[roomId] && (
+                  <div className="divide-y divide-[#963E56]/10">
+                    {plannings.map((planning) => {
+                      const volunteer = volunteers.find((v) => v.id === planning.volunteerId);
+                      return (
+                        <div key={planning.id} className="p-4 sm:p-6 bg-white">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "font-medium",
+                                  planning.isResponsible ? "text-[#963E56]" : "text-gray-900"
+                                )}>
+                                  {volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : "-"}
                                 </span>
+                                {planning.isResponsible && (
+                                  <UserCircle2 className="w-4 h-4 text-[#963E56]" />
+                                )}
                               </div>
-                              <span>→</span>
-                              <div className="flex items-center gap-1.5">
-                                <Calendar className="h-4 w-4" />
-                                <span>
-                                  {format(parseISO(planning.endDate), "EEEE d MMM yyyy", { locale: nl })}
-                                </span>
+                              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>
+                                    {format(parseISO(planning.startDate), "EEEE d MMM yyyy", { locale: nl })}
+                                  </span>
+                                </div>
+                                <span>→</span>
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>
+                                    {format(parseISO(planning.endDate), "EEEE d MMM yyyy", { locale: nl })}
+                                  </span>
+                                </div>
                               </div>
                             </div>
+
+                            {showActions && (
+                              <div className="flex items-center gap-2">
+                                {onEdit && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => onEdit(planning)}
+                                        >
+                                          <Edit2 className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        Bewerken
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => onDelete(planning.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
-
-                          {showActions && (
-                            <div className="flex items-center gap-2">
-                              {onEdit && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => onEdit(planning)}
-                                      >
-                                        <Edit2 className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      Bewerken
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => onDelete(planning.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
           ))
         )}
       </div>
@@ -382,8 +387,8 @@ const Planning = () => {
     form.reset({
       volunteerId: planning.volunteerId,
       roomId: planning.roomId,
-      startDate: planning.startDate,
-      endDate: planning.endDate,
+      startDate: format(parseISO(planning.startDate), 'yyyy-MM-dd'),
+      endDate: format(parseISO(planning.endDate), 'yyyy-MM-dd'),
       isBulkPlanning: false,
       selectedVolunteers: [],
       selectedRooms: [],
@@ -414,80 +419,108 @@ const Planning = () => {
   };
   const onSubmit = async (data: z.infer<typeof planningSchema>) => {
     try {
-      const planningData = {
-        startDate: format(new Date(data.startDate), 'yyyy-MM-dd'),
-        endDate: format(new Date(data.endDate), 'yyyy-MM-dd')
-      };
-      const checkForDuplicates = (volunteerId: string, startDate: string, endDate: string) => {
-        return plannings.some(planning =>
-          planning.volunteerId === volunteerId &&
-          ((planning.startDate >= startDate && planning.startDate <= endDate) ||
-            (planning.endDate >= startDate && planning.endDate <= endDate))
-        );
-      };
-      if (data.isBulkPlanning) {
-        const volunteers = data.selectedVolunteers || [];
-        const rooms = data.selectedRooms || [];
-        const duplicateVolunteers = volunteers.filter(volunteerId =>
-          checkForDuplicates(volunteerId, planningData.startDate, planningData.endDate)
-        );
-        if (duplicateVolunteers.length > 0) {
-          const duplicateNames = duplicateVolunteers.map(id => {
-            const volunteer = volunteers.find(v => v.id === id);
-            return volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : 'Onbekend';
-          }).join(', ');
-          throw new Error(`De volgende vrijwilligers zijn al ingepland op deze datum(s): ${duplicateNames}`);
-        }
-        await logUserAction(
-          UserActionTypes.PLANNING_BULK_CREATE,
-          `Bulk planning aangemaakt voor ${volunteers.length} vrijwilligers en ${rooms.length} ruimtes`,
-          {
-            type: 'planning',
-            details: `Periode: ${planningData.startDate} tot ${planningData.endDate}`
-          }
-        );
-        for (const volunteerId of volunteers) {
-          for (const roomId of rooms) {
-            await push(ref(db, "plannings"), {
-              volunteerId,
-              roomId,
-              ...planningData,
-              isResponsible: false
-            });
-          }
-        }
-      } else {
-        if (data.volunteerId && checkForDuplicates(data.volunteerId, planningData.startDate, planningData.endDate)) {
-          const volunteer = volunteers.find(v => v.id === data.volunteerId);
-          throw new Error(`${volunteer?.firstName} ${volunteer?.lastName} is al ingepland op deze datum(s)`);
-        }
-        if (data.isResponsible) {
-          const existingResponsible = plannings.find(
-            p => p.roomId === data.roomId && p.isResponsible
-          );
-          if (existingResponsible) {
-            const prevRef = ref(db, `plannings/${existingResponsible.id}`);
-            await update(prevRef, { isResponsible: false });
-          }
-        }
-        const result = await push(ref(db, "plannings"), {
+      if (editingPlanning) {
+        // Update existing planning
+        const planningData = {
           volunteerId: data.volunteerId,
           roomId: data.roomId,
-          isResponsible: data.isResponsible,
-          ...planningData
-        });
+          startDate: format(new Date(data.startDate), 'yyyy-MM-dd'),
+          endDate: format(new Date(data.endDate), 'yyyy-MM-dd'),
+          isResponsible: data.isResponsible
+        };
+
+        const planningRef = ref(db, `plannings/${editingPlanning.id}`);
+        await update(planningRef, planningData);
+
         const volunteer = volunteers.find(v => v.id === data.volunteerId);
         const room = rooms.find(r => r.id === data.roomId);
+
         await logUserAction(
-          UserActionTypes.PLANNING_CREATE,
-          data.isResponsible ? "Verantwoordelijke toegewezen" : "Planning toegevoegd",
+          UserActionTypes.PLANNING_UPDATE,
+          "Planning bijgewerkt",
           {
             type: 'planning',
-            id: result.key,
-            details: `${volunteer?.firstName} ${volunteer?.lastName} ${data.isResponsible ? 'als verantwoordelijke ' : ''}ingepland voor ${room?.name}`,
+            id: editingPlanning.id,
+            details: `${volunteer?.firstName} ${volunteer?.lastName} bijgewerkt voor ${room?.name}`,
             targetName: `${room?.name} (${planningData.startDate} - ${planningData.endDate})`
           }
         );
+      } else {
+        const planningData = {
+          startDate: format(new Date(data.startDate), 'yyyy-MM-dd'),
+          endDate: format(new Date(data.endDate), 'yyyy-MM-dd')
+        };
+        const checkForDuplicates = (volunteerId: string, startDate: string, endDate: string) => {
+          return plannings.some(planning =>
+            planning.volunteerId === volunteerId &&
+            ((planning.startDate >= startDate && planning.startDate <= endDate) ||
+              (planning.endDate >= startDate && planning.endDate <= endDate))
+          );
+        };
+        if (data.isBulkPlanning) {
+          const volunteers = data.selectedVolunteers || [];
+          const rooms = data.selectedRooms || [];
+          const duplicateVolunteers = volunteers.filter(volunteerId =>
+            checkForDuplicates(volunteerId, planningData.startDate, planningData.endDate)
+          );
+          if (duplicateVolunteers.length > 0) {
+            const duplicateNames = duplicateVolunteers.map(id => {
+              const volunteer = volunteers.find(v => v.id === id);
+              return volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : 'Onbekend';
+            }).join(', ');
+            throw new Error(`De volgende vrijwilligers zijn al ingepland op deze datum(s): ${duplicateNames}`);
+          }
+          await logUserAction(
+            UserActionTypes.PLANNING_BULK_CREATE,
+            `Bulk planning aangemaakt voor ${volunteers.length} vrijwilligers en ${rooms.length} ruimtes`,
+            {
+              type: 'planning',
+              details: `Periode: ${planningData.startDate} tot ${planningData.endDate}`
+            }
+          );
+          for (const volunteerId of volunteers) {
+            for (const roomId of rooms) {
+              await push(ref(db, "plannings"), {
+                volunteerId,
+                roomId,
+                ...planningData,
+                isResponsible: false
+              });
+            }
+          }
+        } else {
+          if (data.volunteerId && checkForDuplicates(data.volunteerId, planningData.startDate, planningData.endDate)) {
+            const volunteer = volunteers.find(v => v.id === data.volunteerId);
+            throw new Error(`${volunteer?.firstName} ${volunteer?.lastName} is al ingepland op deze datum(s)`);
+          }
+          if (data.isResponsible) {
+            const existingResponsible = plannings.find(
+              p => p.roomId === data.roomId && p.isResponsible
+            );
+            if (existingResponsible) {
+              const prevRef = ref(db, `plannings/${existingResponsible.id}`);
+              await update(prevRef, { isResponsible: false });
+            }
+          }
+          const result = await push(ref(db, "plannings"), {
+            volunteerId: data.volunteerId,
+            roomId: data.roomId,
+            isResponsible: data.isResponsible,
+            ...planningData
+          });
+          const volunteer = volunteers.find(v => v.id === data.volunteerId);
+          const room = rooms.find(r => r.id === data.roomId);
+          await logUserAction(
+            UserActionTypes.PLANNING_CREATE,
+            data.isResponsible ? "Verantwoordelijke toegewezen" : "Planning toegevoegd",
+            {
+              type: 'planning',
+              id: result.key,
+              details: `${volunteer?.firstName} ${volunteer?.lastName} ${data.isResponsible ? 'als verantwoordelijke ' : ''}ingepland voor ${room?.name}`,
+              targetName: `${room?.name} (${planningData.startDate} - ${planningData.endDate})`
+            }
+          );
+        }
       }
       setDialogOpen(false);
       setEditingPlanning(null);

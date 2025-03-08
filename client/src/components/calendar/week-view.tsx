@@ -17,10 +17,13 @@ import { CalendarPDF } from "../pdf/calendar-pdf";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { cn } from "@/lib/utils";
 
-type Volunteer = {
+type Planning = {
   id: string;
-  firstName: string;
-  lastName: string;
+  volunteerId: string;
+  roomId: string;
+  startDate: string;
+  endDate: string;
+  isResponsible?: boolean;
 };
 
 type Room = {
@@ -29,13 +32,10 @@ type Room = {
   channel?: string;
 };
 
-type Planning = {
+type Volunteer = {
   id: string;
-  volunteerId: string;
-  roomId: string;
-  startDate: string;
-  endDate: string;
-  isResponsible?: boolean;
+  firstName: string;
+  lastName: string;
 };
 
 export const WeekView = ({ checkedOutMaterials }: { checkedOutMaterials?: number }) => {
@@ -93,15 +93,6 @@ export const WeekView = ({ checkedOutMaterials }: { checkedOutMaterials?: number
     });
   }, []);
 
-  const goToPreviousWeek = () => setCurrentWeek(addWeeks(currentWeek, -1));
-  const goToNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
-  const goToToday = () => setCurrentWeek(new Date());
-
-  const publishSchedule = () => {
-    const publicUrl = `${window.location.origin}/calendar/public`;
-    window.open(publicUrl, '_blank');
-  };
-
   const getPlanningsForDay = (day: Date) => {
     return plannings.filter(planning => {
       const planningStart = parseISO(planning.startDate);
@@ -115,26 +106,29 @@ export const WeekView = ({ checkedOutMaterials }: { checkedOutMaterials?: number
   };
 
   const getPlanningsForPDF = () => {
-    let planningsForPDF = [];
+    const pdfPlannings = [];
     for (const day of weekDays) {
       const dayPlannings = getPlanningsForDay(day);
       for (const planning of dayPlannings) {
         const volunteer = volunteers.find(v => v.id === planning.volunteerId);
         const room = rooms.find(r => r.id === planning.roomId);
-        planningsForPDF.push({
-          volunteer: {
-            firstName: volunteer?.firstName || 'Onbekend',
-            lastName: volunteer?.lastName || 'Vrijwilliger'
-          },
-          room: {
-            name: room?.name || 'Onbekende ruimte',
-            channel: room?.channel
-          },
-          date: day
-        });
+        if (volunteer && room) {
+          pdfPlannings.push({
+            volunteer: {
+              firstName: volunteer.firstName,
+              lastName: volunteer.lastName
+            },
+            room: {
+              name: room.name,
+              channel: room.channel
+            },
+            date: day,
+            isResponsible: planning.isResponsible
+          });
+        }
       }
     }
-    return planningsForPDF;
+    return pdfPlannings;
   };
 
   const getPlanningsByRoom = (day: Date) => {
@@ -144,17 +138,26 @@ export const WeekView = ({ checkedOutMaterials }: { checkedOutMaterials?: number
     rooms.forEach(room => {
       const roomPlannings = dayPlannings.filter(p => p.roomId === room.id);
       if (roomPlannings.length > 0) {
-        planningsByRoom.set(room.id, roomPlannings);
+        // Sort plannings to put responsible volunteer first
+        const sortedPlannings = [...roomPlannings].sort((a, b) => {
+          if (a.isResponsible) return -1;
+          if (b.isResponsible) return 1;
+          return 0;
+        });
+        planningsByRoom.set(room.id, sortedPlannings);
       }
     });
 
     return planningsByRoom;
   };
 
-  const getResponsibleForRoom = (roomId: string, plannings: Planning[]) => {
-    const responsiblePlanning = plannings.find(p => p.roomId === roomId && p.isResponsible);
-    if (!responsiblePlanning) return null;
-    return volunteers.find(v => v.id === responsiblePlanning.volunteerId);
+  const goToPreviousWeek = () => setCurrentWeek(addWeeks(currentWeek, -1));
+  const goToNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
+  const goToToday = () => setCurrentWeek(new Date());
+
+  const publishSchedule = () => {
+    const publicUrl = `${window.location.origin}/calendar/public`;
+    window.open(publicUrl, '_blank');
   };
 
   return (
@@ -257,41 +260,38 @@ export const WeekView = ({ checkedOutMaterials }: { checkedOutMaterials?: number
                     const roomPlannings = planningsByRoom.get(room.id);
                     if (!roomPlannings) return null;
 
-                    const responsible = getResponsibleForRoom(room.id, roomPlannings);
-
                     return (
-                      <div key={room.id} className="space-y-1">
-                        <div className="font-medium text-xs text-[#963E56]/80 border-b pb-1">
+                      <div key={room.id} className="space-y-2 rounded-lg bg-[#963E56]/5 p-2">
+                        <div className="font-medium text-sm text-[#963E56] border-b border-[#963E56]/10 pb-1">
                           <div className="flex items-center justify-between mb-1">
                             <span>{room.name}</span>
                             {room.channel && (
-                              <div className="flex items-center gap-1 text-[10px] text-[#963E56]/70">
+                              <div className="flex items-center gap-1 text-[10px] text-[#963E56]">
                                 <GiWalkieTalkie className="h-3 w-3" />
                                 <span>{room.channel}</span>
                               </div>
                             )}
                           </div>
-                          {responsible && (
-                            <div className="flex items-center gap-1 text-[11px] text-[#963E56]/90 bg-[#963E56]/5 p-1 rounded">
-                              <UserCircle2 className="h-3 w-3" />
-                              <span>Verantwoordelijke: {responsible.firstName} {responsible.lastName}</span>
-                            </div>
-                          )}
                         </div>
-                        <div className="space-y-1 pl-1">
+                        <div className="space-y-2 pl-2">
                           {roomPlannings.map(planning => {
                             const volunteer = volunteers.find(v => v.id === planning.volunteerId);
-                            if (planning.isResponsible) return null;
                             const name = volunteer
-                              ? `${volunteer.firstName}${volunteer.lastName ? ' ' + volunteer.lastName[0] + '.' : ''}`
+                              ? `${volunteer.firstName} ${volunteer.lastName[0]}.`
                               : 'Niet toegewezen';
                             return (
                               <div
                                 key={planning.id}
-                                className="text-[11px] leading-tight p-1.5 rounded bg-[#963E56]/5 border border-[#963E56]/10"
+                                className={cn(
+                                  "text-[11px] leading-tight p-1.5 rounded border border-[#963E56]/10",
+                                  planning.isResponsible ? "bg-[#963E56]/10" : "bg-white/50"
+                                )}
                               >
-                                <div className="font-medium text-[#963E56]/90 overflow-hidden whitespace-nowrap">
+                                <div className="font-medium text-[#963E56]/90 overflow-hidden whitespace-nowrap flex items-center gap-1.5">
                                   <span>{name}</span>
+                                  {planning.isResponsible && (
+                                    <UserCircle2 className="h-3 w-3 shrink-0 text-[#963E56]" />
+                                  )}
                                 </div>
                               </div>
                             );
@@ -301,7 +301,7 @@ export const WeekView = ({ checkedOutMaterials }: { checkedOutMaterials?: number
                     );
                   })}
                   {planningsByRoom.size === 0 && (
-                    <p className="text-xs sm:text-sm text-muted-foreground italic text-center py-3 sm:py-4">
+                    <p className="text-sm text-muted-foreground italic text-center py-4">
                       Geen toewijzingen
                     </p>
                   )}

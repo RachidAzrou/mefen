@@ -4,7 +4,8 @@ import { nl } from "date-fns/locale";
 import { db } from "@/lib/firebase";
 import { ref, onValue } from "firebase/database";
 import { GiWalkieTalkie } from "react-icons/gi";
-import { UserCircle2 } from "lucide-react"; 
+import { UserCircle2 } from "lucide-react";
+import classNames from "classnames";
 
 type Planning = {
   id: string;
@@ -73,15 +74,10 @@ export default function PublicCalendar() {
       const planningStart = parseISO(planning.startDate);
       const planningEnd = parseISO(planning.endDate);
 
-      const startDate = new Date(planningStart.setHours(0, 0, 0, 0));
-      const endDate = new Date(planningEnd.setHours(0, 0, 0, 0));
-      const checkDate = new Date(day.setHours(0, 0, 0, 0));
-
-      return (
-        isWithinInterval(checkDate, { start: startDate, end: endDate }) ||
-        isSameDay(checkDate, startDate) ||
-        isSameDay(checkDate, endDate)
-      );
+      return isWithinInterval(day, {
+        start: planningStart,
+        end: planningEnd
+      }) || isSameDay(day, planningStart) || isSameDay(day, planningEnd);
     });
   };
 
@@ -92,7 +88,13 @@ export default function PublicCalendar() {
     rooms.forEach(room => {
       const roomPlannings = dayPlannings.filter(p => p.roomId === room.id);
       if (roomPlannings.length > 0) {
-        planningsByRoom.set(room.id, roomPlannings);
+        // Sort plannings to put responsible volunteer first
+        const sortedPlannings = [...roomPlannings].sort((a, b) => {
+          if (a.isResponsible) return -1;
+          if (b.isResponsible) return 1;
+          return 0;
+        });
+        planningsByRoom.set(room.id, sortedPlannings);
       }
     });
 
@@ -120,13 +122,15 @@ export default function PublicCalendar() {
             return (
               <div
                 key={day.toISOString()}
-                className={`bg-white rounded-lg shadow p-4 ${
-                  isToday ? 'ring-2 ring-[#D9A347] ring-offset-2' : ''
-                }`}
+                className={classNames(
+                  "bg-white rounded-lg shadow p-4",
+                  isToday && "ring-2 ring-[#D9A347] ring-offset-2"
+                )}
               >
-                <div className={`text-lg font-semibold ${
-                  isToday ? 'text-[#D9A347]' : 'text-primary'
-                }`}>
+                <div className={classNames(
+                  "text-lg font-semibold",
+                  isToday ? "text-[#D9A347]" : "text-[#963E56]"
+                )}>
                   {format(day, "EEEE", { locale: nl })}
                 </div>
                 <div className="text-sm text-gray-500 mb-4">
@@ -139,15 +143,17 @@ export default function PublicCalendar() {
                     if (!roomPlannings) return null;
 
                     return (
-                      <div key={room.id} className="space-y-2">
-                        <div className="font-medium text-sm text-primary/80 border-b pb-1 flex items-center justify-between">
-                          <span>{room.name}</span>
-                          {room.channel && (
-                            <div className="flex items-center gap-1 text-[10px] text-[#963E56]/70">
-                              <GiWalkieTalkie className="h-3 w-3" />
-                              <span>{room.channel}</span>
-                            </div>
-                          )}
+                      <div key={room.id} className="space-y-2 rounded-lg bg-[#963E56]/5 p-2">
+                        <div className="font-medium text-sm text-[#963E56] border-b border-[#963E56]/10 pb-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span>{room.name}</span>
+                            {room.channel && (
+                              <div className="flex items-center gap-1 text-[10px] text-[#963E56]">
+                                <GiWalkieTalkie className="h-3 w-3" />
+                                <span>{room.channel}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="space-y-2 pl-2">
                           {roomPlannings.map(planning => {
@@ -155,17 +161,20 @@ export default function PublicCalendar() {
                             return (
                               <div
                                 key={planning.id}
-                                className="text-sm p-2 rounded bg-primary/5 border border-primary/10"
+                                className={classNames(
+                                  "text-sm p-2 rounded border border-[#963E56]/10",
+                                  planning.isResponsible ? "bg-[#963E56]/10" : "bg-white/50"
+                                )}
                               >
                                 <div className="font-medium flex items-center gap-1.5">
                                   <span>
                                     {volunteer
-                                      ? `${volunteer.firstName} ${volunteer.lastName}`
+                                      ? `${volunteer.firstName} ${volunteer.lastName[0]}.`
                                       : 'Niet toegewezen'
                                     }
                                   </span>
                                   {planning.isResponsible && (
-                                    <UserCircle2 className="h-4 w-4 shrink-0 text-primary/70" />
+                                    <UserCircle2 className="h-4 w-4 shrink-0 text-[#963E56]" />
                                   )}
                                 </div>
                               </div>
@@ -195,13 +204,15 @@ export default function PublicCalendar() {
             return (
               <div
                 key={day.toISOString()}
-                className={`bg-white rounded-lg shadow p-4 ${
-                  isToday ? 'ring-2 ring-[#D9A347] ring-offset-2' : ''
-                }`}
+                className={classNames(
+                  "bg-white rounded-lg shadow p-4",
+                  isToday && "ring-2 ring-[#D9A347] ring-offset-2"
+                )}
               >
-                <div className={`font-medium text-lg ${
-                  isToday ? 'text-[#D9A347]' : 'text-primary'
-                }`}>
+                <div className={classNames(
+                  "font-medium text-lg",
+                  isToday ? "text-[#D9A347]" : "text-[#963E56]"
+                )}>
                   {format(day, "EEEE", { locale: nl })}
                 </div>
                 <div className="text-sm text-gray-500 mb-4">
@@ -214,15 +225,17 @@ export default function PublicCalendar() {
                     if (!roomPlannings) return null;
 
                     return (
-                      <div key={room.id} className="space-y-2">
-                        <div className="font-medium text-sm text-primary/80 border-b pb-1 flex items-center justify-between">
-                          <span>{room.name}</span>
-                          {room.channel && (
-                            <div className="flex items-center gap-1 text-[10px] text-[#963E56]/70">
-                              <GiWalkieTalkie className="h-3 w-3" />
-                              <span>{room.channel}</span>
-                            </div>
-                          )}
+                      <div key={room.id} className="space-y-2 rounded-lg bg-[#963E56]/5 p-2">
+                        <div className="font-medium text-sm text-[#963E56] border-b border-[#963E56]/10 pb-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span>{room.name}</span>
+                            {room.channel && (
+                              <div className="flex items-center gap-1 text-[10px] text-[#963E56]">
+                                <GiWalkieTalkie className="h-3 w-3" />
+                                <span>{room.channel}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="space-y-2 pl-2">
                           {roomPlannings.map(planning => {
@@ -230,17 +243,20 @@ export default function PublicCalendar() {
                             return (
                               <div
                                 key={planning.id}
-                                className="text-sm p-2 rounded bg-primary/5 border border-primary/10"
+                                className={classNames(
+                                  "text-sm p-2 rounded border border-[#963E56]/10",
+                                  planning.isResponsible ? "bg-[#963E56]/10" : "bg-white/50"
+                                )}
                               >
                                 <div className="font-medium flex items-center gap-1.5">
                                   <span>
                                     {volunteer
-                                      ? `${volunteer.firstName} ${volunteer.lastName}`
+                                      ? `${volunteer.firstName} ${volunteer.lastName[0]}.`
                                       : 'Niet toegewezen'
                                     }
                                   </span>
                                   {planning.isResponsible && (
-                                    <UserCircle2 className="h-4 w-4 shrink-0 text-primary/70" />
+                                    <UserCircle2 className="h-4 w-4 shrink-0 text-[#963E56]" />
                                   )}
                                 </div>
                               </div>

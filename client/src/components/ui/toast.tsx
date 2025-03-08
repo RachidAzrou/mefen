@@ -14,7 +14,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse gap-2 p-4 sm:max-w-[420px] sm:p-6",
+      "fixed bottom-0 right-0 z-[100] pointer-events-none flex max-h-screen w-full flex-col-reverse gap-2 p-4 sm:max-w-[420px] sm:p-6",
       className
     )}
     {...props}
@@ -37,7 +37,7 @@ const toastVariants = cva(
       variant: "default",
     },
   }
-)
+);
 
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
@@ -48,7 +48,7 @@ const Toast = React.forwardRef<
     <ToastPrimitives.Root
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
-      duration={2000} // Set duration to 2 seconds
+      duration={2000}
       {...props}
     />
   )

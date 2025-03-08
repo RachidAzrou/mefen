@@ -6,9 +6,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Check, Search, X, UserCircle2 } from "lucide-react";
+import { Check, Search, X, UserCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
@@ -56,18 +56,34 @@ export function PlanningForm({
   plannings
 }: PlanningFormProps) {
   const { toast } = useToast();
-  const isBulkPlanning = form.watch("isBulkPlanning");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchTermBulk, setSearchTermBulk] = useState("");
-  const selectedRoomId = form.watch("roomId");
-  const isResponsible = form.watch("isResponsible");
   const [showResponsibleAlert, setShowResponsibleAlert] = useState(false);
   const [currentResponsible, setCurrentResponsible] = useState<any>(null);
+
+  const isBulkPlanning = form.watch("isBulkPlanning");
+  const selectedRoomId = form.watch("roomId");
+  const isResponsible = form.watch("isResponsible");
+
+  useEffect(() => {
+    if (editingPlanning) {
+      form.reset({
+        volunteerId: editingPlanning.volunteerId,
+        roomId: editingPlanning.roomId,
+        startDate: format(parseISO(editingPlanning.startDate), 'yyyy-MM-dd'),
+        endDate: format(parseISO(editingPlanning.endDate), 'yyyy-MM-dd'),
+        isBulkPlanning: false,
+        selectedVolunteers: [],
+        selectedRooms: [],
+        isResponsible: editingPlanning.isResponsible || false
+      });
+    }
+  }, [editingPlanning, form]);
 
   useEffect(() => {
     if (selectedRoomId && isResponsible) {
       const currentResponsiblePlanning = plannings.find(
-        p => p.roomId === selectedRoomId && p.isResponsible
+        p => p.roomId === selectedRoomId && p.isResponsible && (!editingPlanning || p.id !== editingPlanning.id)
       );
 
       if (currentResponsiblePlanning) {
@@ -75,20 +91,19 @@ export function PlanningForm({
         if (responsible) {
           setCurrentResponsible(responsible);
           setShowResponsibleAlert(true);
-          return;
         }
       }
     }
-  }, [selectedRoomId, isResponsible, plannings, volunteers]);
+  }, [selectedRoomId, isResponsible, plannings, volunteers, editingPlanning]);
 
   const handleFormSubmit = async (data: z.infer<typeof planningSchema>) => {
     try {
       await onSubmit(data);
-    } catch (error) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Fout",
-        description: error.message
+        description: error instanceof Error ? error.message : "Er is een fout opgetreden"
       });
     }
   };
@@ -118,6 +133,64 @@ export function PlanningForm({
 
         {!isBulkPlanning && (
           <>
+            <FormField
+              control={form.control}
+              name="roomId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Ruimte</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue("isResponsible", false);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecteer een ruimte" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rooms.map((room) => {
+                        const responsible = plannings.find(p => p.roomId === room.id && p.isResponsible);
+                        const responsibleVolunteer = responsible
+                          ? volunteers.find(v => v.id === responsible.volunteerId)
+                          : null;
+
+                        return (
+                          <SelectItem
+                            key={room.id}
+                            value={room.id}
+                            className="cursor-pointer py-2.5 px-3 hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Check
+                                className={cn(
+                                  "h-4 w-4 flex-shrink-0",
+                                  field.value === room.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex-grow">
+                                <div>{room.name}</div>
+                                {responsibleVolunteer && (
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <UserCircle2 className="h-3 w-3" />
+                                    <span>
+                                      Verantwoordelijke: {responsibleVolunteer.firstName} {responsibleVolunteer.lastName}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="volunteerId"
@@ -220,55 +293,107 @@ export function PlanningForm({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="roomId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Ruimte</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => {
-                      // Check if room already has a responsible volunteer
-                      const room = rooms.find(r => r.id === value);
-                      
-                      field.onChange(value);
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecteer een ruimte" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {rooms.map((room) => (
-                        <SelectItem
-                          key={room.id}
-                          value={room.id}
-                          className="cursor-pointer py-2.5 px-3 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Check
-                              className={cn(
-                                "h-4 w-4 flex-shrink-0",
-                                field.value === room.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            <span className="flex-grow">{room.name}</span>
-                            {room.responsible && (
-                              <div className="text-xs text-muted-foreground">
-                                (Heeft al een verantwoordelijke)
-                              </div>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </>
         )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="startDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Startdatum</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(new Date(field.value), "d MMM yyyy", { locale: nl })
+                        ) : (
+                          <span>Kies een datum</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value ? new Date(field.value) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+                          const dateStr = format(utcDate, 'yyyy-MM-dd');
+                          field.onChange(dateStr);
+                        }
+                      }}
+                      initialFocus
+                      locale={nl}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="endDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Einddatum</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(new Date(field.value), "d MMM yyyy", { locale: nl })
+                        ) : (
+                          <span>Kies een datum</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value ? new Date(field.value) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+                          const dateStr = format(utcDate, 'yyyy-MM-dd');
+                          field.onChange(dateStr);
+                        }
+                      }}
+                      disabled={(date) => {
+                        const startDate = form.getValues("startDate");
+                        if (!startDate) return true;
+                        return date < new Date(startDate);
+                      }}
+                      initialFocus
+                      locale={nl}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         {isBulkPlanning && (
           <>
@@ -447,105 +572,6 @@ export function PlanningForm({
           </>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="startDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Startdatum</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(new Date(field.value), "d MMM yyyy", { locale: nl })
-                        ) : (
-                          <span>Kies een datum</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value ? new Date(field.value) : undefined}
-                      onSelect={(date) => {
-                        if (date) {
-                          const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-                          const dateStr = format(utcDate, 'yyyy-MM-dd');
-                          field.onChange(dateStr);
-                        }
-                      }}
-                      initialFocus
-                      locale={nl}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Einddatum</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(new Date(field.value), "d MMM yyyy", { locale: nl })
-                        ) : (
-                          <span>Kies een datum</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value ? new Date(field.value) : undefined}
-                      onSelect={(date) => {
-                        if (date) {
-                          const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-                          const dateStr = format(utcDate, 'yyyy-MM-dd');
-                          field.onChange(dateStr);
-                        }
-                      }}
-                      disabled={(date) => {
-                        const startDate = form.getValues("startDate");
-                        if (!startDate) return true;
-                        return date < new Date(startDate);
-                      }}
-                      initialFocus
-                      locale={nl}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
         <AlertDialog open={showResponsibleAlert} onOpenChange={setShowResponsibleAlert}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -553,7 +579,7 @@ export function PlanningForm({
               <AlertDialogDescription>
                 {currentResponsible && (
                   <>
-                    Deze ruimte heeft al een verantwoordelijke: 
+                    Deze ruimte heeft al een verantwoordelijke:
                     <span className="font-medium text-[#963E56]">
                       {` ${currentResponsible.firstName} ${currentResponsible.lastName}`}
                     </span>
