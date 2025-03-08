@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Download, Share2, UserCircle2 } from "lucide-react";
 import { format, startOfWeek, addDays, isWithinInterval, isSameDay, parseISO, addWeeks } from "date-fns";
@@ -38,7 +38,7 @@ type Planning = {
   isResponsible?: boolean;
 };
 
-export function WeekView() {
+export const WeekView = ({ checkedOutMaterials }: { checkedOutMaterials?: number }) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [plannings, setPlannings] = useState<Planning[]>([]);
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
@@ -107,9 +107,9 @@ export function WeekView() {
       const planningStart = parseISO(planning.startDate);
       const planningEnd = parseISO(planning.endDate);
 
-      return isWithinInterval(day, { 
+      return isWithinInterval(day, {
         start: planningStart,
-        end: planningEnd 
+        end: planningEnd
       }) || isSameDay(day, planningStart) || isSameDay(day, planningEnd);
     });
   };
@@ -149,6 +149,12 @@ export function WeekView() {
     });
 
     return planningsByRoom;
+  };
+
+  const getResponsibleForRoom = (roomId: string, plannings: Planning[]) => {
+    const responsiblePlanning = plannings.find(p => p.roomId === roomId && p.isResponsible);
+    if (!responsiblePlanning) return null;
+    return volunteers.find(v => v.id === responsiblePlanning.volunteerId);
   };
 
   return (
@@ -251,20 +257,31 @@ export function WeekView() {
                     const roomPlannings = planningsByRoom.get(room.id);
                     if (!roomPlannings) return null;
 
+                    const responsible = getResponsibleForRoom(room.id, roomPlannings);
+
                     return (
                       <div key={room.id} className="space-y-1">
-                        <div className="font-medium text-xs text-[#963E56]/80 border-b pb-0.5 flex items-center justify-between">
-                          <span>{room.name}</span>
-                          {room.channel && (
-                            <div className="flex items-center gap-1 text-[10px] text-[#963E56]/70">
-                              <GiWalkieTalkie className="h-3 w-3" />
-                              <span>{room.channel}</span>
+                        <div className="font-medium text-xs text-[#963E56]/80 border-b pb-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span>{room.name}</span>
+                            {room.channel && (
+                              <div className="flex items-center gap-1 text-[10px] text-[#963E56]/70">
+                                <GiWalkieTalkie className="h-3 w-3" />
+                                <span>{room.channel}</span>
+                              </div>
+                            )}
+                          </div>
+                          {responsible && (
+                            <div className="flex items-center gap-1 text-[11px] text-[#963E56]/90 bg-[#963E56]/5 p-1 rounded">
+                              <UserCircle2 className="h-3 w-3" />
+                              <span>Verantwoordelijke: {responsible.firstName} {responsible.lastName}</span>
                             </div>
                           )}
                         </div>
                         <div className="space-y-1 pl-1">
                           {roomPlannings.map(planning => {
                             const volunteer = volunteers.find(v => v.id === planning.volunteerId);
+                            if (planning.isResponsible) return null;
                             const name = volunteer
                               ? `${volunteer.firstName}${volunteer.lastName ? ' ' + volunteer.lastName[0] + '.' : ''}`
                               : 'Niet toegewezen';
@@ -273,11 +290,8 @@ export function WeekView() {
                                 key={planning.id}
                                 className="text-[11px] leading-tight p-1.5 rounded bg-[#963E56]/5 border border-[#963E56]/10"
                               >
-                                <div className="font-medium text-[#963E56]/90 overflow-hidden whitespace-nowrap flex items-center gap-1">
+                                <div className="font-medium text-[#963E56]/90 overflow-hidden whitespace-nowrap">
                                   <span>{name}</span>
-                                  {planning.isResponsible && (
-                                    <UserCircle2 className="w-3 h-3 text-[#963E56]" />
-                                  )}
                                 </div>
                               </div>
                             );
@@ -309,4 +323,4 @@ export function WeekView() {
       </div>
     </div>
   );
-}
+};
