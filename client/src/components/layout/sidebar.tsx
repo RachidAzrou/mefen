@@ -62,7 +62,6 @@ export function Sidebar() {
     { icon: Users, label: "Vrijwilligers", href: "/volunteers" },
     { icon: Package2, label: "Materialen", href: "/materials" },
     { icon: Radio, label: "Communicatie", href: "/communication" },
-    { icon: PiUsersThree, label: "Sufuf", href: "/sufuf" },
     {
       icon: FileJson,
       label: "Import/Export",

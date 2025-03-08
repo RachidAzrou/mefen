@@ -4,6 +4,7 @@ import { nl } from "date-fns/locale";
 import { db } from "@/lib/firebase";
 import { ref, onValue } from "firebase/database";
 import { GiWalkieTalkie } from "react-icons/gi";
+import { UserCircle2 } from "lucide-react"; 
 
 type Planning = {
   id: string;
@@ -11,6 +12,7 @@ type Planning = {
   roomId: string;
   startDate: string;
   endDate: string;
+  isResponsible?: boolean;
 };
 
 type Room = {
@@ -155,11 +157,16 @@ export default function PublicCalendar() {
                                 key={planning.id}
                                 className="text-sm p-2 rounded bg-primary/5 border border-primary/10"
                               >
-                                <div className="font-medium">
-                                  {volunteer
-                                    ? `${volunteer.firstName} ${volunteer.lastName}`
-                                    : 'Niet toegewezen'
-                                  }
+                                <div className="font-medium flex items-center gap-1.5">
+                                  <span>
+                                    {volunteer
+                                      ? `${volunteer.firstName} ${volunteer.lastName}`
+                                      : 'Niet toegewezen'
+                                    }
+                                  </span>
+                                  {planning.isResponsible && (
+                                    <UserCircle2 className="h-4 w-4 shrink-0 text-primary/70" />
+                                  )}
                                 </div>
                               </div>
                             );
@@ -225,11 +232,16 @@ export default function PublicCalendar() {
                                 key={planning.id}
                                 className="text-sm p-2 rounded bg-primary/5 border border-primary/10"
                               >
-                                <div className="font-medium">
-                                  {volunteer
-                                    ? `${volunteer.firstName} ${volunteer.lastName}`
-                                    : 'Niet toegewezen'
-                                  }
+                                <div className="font-medium flex items-center gap-1.5">
+                                  <span>
+                                    {volunteer
+                                      ? `${volunteer.firstName} ${volunteer.lastName}`
+                                      : 'Niet toegewezen'
+                                    }
+                                  </span>
+                                  {planning.isResponsible && (
+                                    <UserCircle2 className="h-4 w-4 shrink-0 text-primary/70" />
+                                  )}
                                 </div>
                               </div>
                             );
