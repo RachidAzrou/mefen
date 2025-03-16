@@ -1,9 +1,25 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { CalendarIcon, Check } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -18,7 +34,7 @@ const deleteFormSchema = z.object({
   startDate: z.string().min(1, "Startdatum is verplicht"),
   endDate: z.string().min(1, "Einddatum is verplicht"),
   selectedVolunteers: z.array(z.string()).default([]),
-  selectedRooms: z.array(z.string()).default([])
+  selectedRooms: z.array(z.string()).default([]),
 });
 
 type DeleteFormData = z.infer<typeof deleteFormSchema>;
@@ -34,7 +50,7 @@ export function DeletePlanningDialog({
   volunteers,
   rooms,
   onDelete,
-  onClose
+  onClose,
 }: DeletePlanningDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,8 +61,8 @@ export function DeletePlanningDialog({
       startDate: "",
       endDate: "",
       selectedVolunteers: [],
-      selectedRooms: []
-    }
+      selectedRooms: [],
+    },
   });
 
   const handleSubmit = async (data: DeleteFormData) => {
@@ -61,10 +77,10 @@ export function DeletePlanningDialog({
     }
   };
 
-  const filteredVolunteers = volunteers.filter(volunteer =>
+  const filteredVolunteers = volunteers.filter((volunteer) =>
     `${volunteer.firstName} ${volunteer.lastName}`
       .toLowerCase()
-      .includes(searchTerm.toLowerCase())
+      .includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -77,8 +93,8 @@ export function DeletePlanningDialog({
             <FormItem>
               <FormLabel>Vrijwilligers</FormLabel>
               <Command className="rounded-lg border shadow-md">
-                <CommandInput 
-                  placeholder="Zoek vrijwilligers..." 
+                <CommandInput
+                  placeholder="Zoek vrijwilligers..."
                   value={searchTerm}
                   onValueChange={setSearchTerm}
                 />
@@ -90,7 +106,7 @@ export function DeletePlanningDialog({
                       onSelect={() => {
                         const current = field.value || [];
                         const updated = current.includes(volunteer.id)
-                          ? current.filter(id => id !== volunteer.id)
+                          ? current.filter((id) => id !== volunteer.id)
                           : [...current, volunteer.id];
                         field.onChange(updated);
                       }}
@@ -98,7 +114,9 @@ export function DeletePlanningDialog({
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4",
-                          field.value?.includes(volunteer.id) ? "opacity-100" : "opacity-0"
+                          field.value?.includes(volunteer.id)
+                            ? "opacity-100"
+                            : "opacity-0",
                         )}
                       />
                       {volunteer.firstName} {volunteer.lastName}
@@ -127,7 +145,7 @@ export function DeletePlanningDialog({
                       onSelect={() => {
                         const current = field.value || [];
                         const updated = current.includes(room.id)
-                          ? current.filter(id => id !== room.id)
+                          ? current.filter((id) => id !== room.id)
                           : [...current, room.id];
                         field.onChange(updated);
                       }}
@@ -135,7 +153,9 @@ export function DeletePlanningDialog({
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4",
-                          field.value?.includes(room.id) ? "opacity-100" : "opacity-0"
+                          field.value?.includes(room.id)
+                            ? "opacity-100"
+                            : "opacity-0",
                         )}
                       />
                       {room.name}
@@ -161,11 +181,13 @@ export function DeletePlanningDialog({
                       variant={"outline"}
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !field.value && "text-muted-foreground"
+                        !field.value && "text-muted-foreground",
                       )}
                     >
                       {field.value ? (
-                        format(parseISO(field.value), "EEEE d MMMM yyyy", { locale: nl })
+                        format(parseISO(field.value), "EEEE d MMMM yyyy", {
+                          locale: nl,
+                        })
                       ) : (
                         <span>Kies een datum</span>
                       )}
@@ -205,11 +227,13 @@ export function DeletePlanningDialog({
                       variant={"outline"}
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !field.value && "text-muted-foreground"
+                        !field.value && "text-muted-foreground",
                       )}
                     >
                       {field.value ? (
-                        format(parseISO(field.value), "EEEE d MMMM yyyy", { locale: nl })
+                        format(parseISO(field.value), "EEEE d MMMM yyyy", {
+                          locale: nl,
+                        })
                       ) : (
                         <span>Kies een datum</span>
                       )}
